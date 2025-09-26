@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import type { Workout, Exercise } from '../types';
-import { BackArrowIcon, InfoIcon, PauseIcon, PlayIcon, NextIcon, PrevIcon } from './icons';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import type { Workout, Exercise, WorkoutPhase, TimerSnapshot } from '../types';
 import * as ProgressService from '../services/progressService';
+import { BackArrowIcon, InfoIcon, PauseIcon, PlayIcon, NextIcon, PrevIcon } from './icons';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const formatTime = (s: number) => `${pad(Math.floor(s / 60))}:${pad(Math.floor(s % 60))}`;
-
-type WorkoutPhase = 'getready' | 'warmup' | 'work' | 'rest' | 'cooldown' | 'done';
 
 const Dot: React.FC<{ status: 'done' | 'active' | 'pending' }> = ({ status }) => {
     const baseClasses = "w-2.5 h-2.5 rounded-full transition-colors";
@@ -78,13 +76,38 @@ export const WorkoutScreen: React.FC<{
     onBack: () => void;
     onFinish: () => void;
 }> = ({ workout, workoutIndex, onBack, onFinish }) => {
-    const { work, rest, rounds } = ProgressService.parseTiming(workout);
+    const { work, rest, rounds } = workout;
 
     const [phase, setPhase] = useState<WorkoutPhase>('getready');
     const [exerciseIndex, setExerciseIndex] = useState(0);
     const [round, setRound] = useState(1);
     const [seconds, setSeconds] = useState(5); // Get ready time
     const [running, setRunning] = useState(true);
+    // Fix: Initialize useRef with null and update the type to allow null.
+    // This resolves the error where useRef was called without an initial value,
+    // which is required when a generic type parameter is provided.
+    const timerStateRef = useRef<TimerSnapshot | null>(null);
+
+    // Initial state setup from resume data
+    useEffect(() => {
+        const progress = ProgressService.loadProgress();
+        const pItem = progress[workout.id];
+        
+        if (pItem?.inProgress && pItem.snap) {
+            const snap = pItem.snap;
+            console.log("Resuming workout from snapshot:", snap);
+
+            const clampedExIndex = Math.max(0, Math.min(snap.exerciseIndex, workout.exercises.length - 1));
+            const clampedRound = Math.max(1, Math.min(snap.round, rounds));
+
+            setPhase(snap.phase);
+            setSeconds(snap.seconds);
+            setExerciseIndex(clampedExIndex);
+            setRound(clampedRound);
+        }
+    // Fix: The dependency on `rounds` was redundant because it is derived from `workout`.
+    // This effect should only re-run when the `workout` prop itself changes.
+    }, [workout]);
 
     const currentExercise: Exercise = useMemo(() => {
         if (phase === 'warmup') return workout.warmUp;
@@ -143,17 +166,41 @@ export const WorkoutScreen: React.FC<{
         return () => clearInterval(interval);
     }, [running, phase, work, rest, rounds, workout.exercises.length, onFinish, round, exerciseIndex]);
     
+    // Effect to save progress when state changes
+    useEffect(() => {
+        const snapshot: TimerSnapshot = {
+            workoutId: workout.id,
+            phase,
+            round,
+            exerciseIndex,
+            seconds,
+        };
+        timerStateRef.current = snapshot;
+        
+        // Save progress if the timer is running and we are in an active state
+        if (running && phase !== 'done' && phase !== 'getready') {
+            ProgressService.markInProgress(workout.id, snapshot);
+        }
+    }, [workout.id, phase, round, exerciseIndex, seconds, running]);
+
+    // Cleanup effect to save state on unmount
+    useEffect(() => {
+        return () => {
+            if (timerStateRef.current && timerStateRef.current.phase !== 'done') {
+                ProgressService.markInProgress(timerStateRef.current.workoutId, timerStateRef.current);
+            }
+        };
+    }, []);
+
     const changeExercise = (direction: 1 | -1) => {
         setRunning(false);
 
-        // Allow skipping "Get Ready" countdown
         if (phase === 'getready' && direction === 1) {
             setPhase('warmup');
             setSeconds(work);
             return;
         }
 
-        // Allow skipping "Cool Down"
         if (phase === 'cooldown' && direction === 1) {
             setPhase('done');
             onFinish();
@@ -161,14 +208,14 @@ export const WorkoutScreen: React.FC<{
         }
 
         if (phase === 'warmup') {
-            if (direction === 1) { // from warmup to first exercise
+            if (direction === 1) { 
                 setPhase('work');
                 setRound(1);
                 setExerciseIndex(0);
                 setSeconds(work);
             }
         } else if (phase === 'cooldown') {
-            if (direction === -1) { // from cooldown to last exercise
+            if (direction === -1) { 
                 setPhase('work');
                 setRound(rounds);
                 setExerciseIndex(workout.exercises.length - 1);

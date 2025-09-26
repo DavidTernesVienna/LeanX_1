@@ -1,8 +1,11 @@
-import type { Workout, Exercise } from './types';
+import type { RawWorkout, Workout, Exercise } from './types';
+import { parseTiming, assertWorkout } from './timing';
+
+const slugify = (text: string) => text.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
 
 const createExercise = (name: string): Exercise => ({
   name,
-  image: `https://picsum.photos/seed/${name.toLowerCase().replace(/\s+/g, '-')}/400/400`,
+  image: `https://picsum.photos/seed/${slugify(name)}/400/400`,
   description: [
     'Maintain a straight back and engaged core.',
     'Focus on controlled, deliberate movements.',
@@ -10,8 +13,8 @@ const createExercise = (name: string): Exercise => ({
   ]
 });
 
-const WORKOUT_NAMES = [
-    // Cycle 1
+const WORKOUT_NAMES: RawWorkout[] = [
+    // Cycles 1,2,3,4
     { cycle: "Cycle 1", week: "Week 1", day: "Monday", timing: "40/20", warmUp: "Crawling Warm Up", exercises: ["Parallel Leg Crunch", "Starfish Twist", "Stork Stance"], coolDown: "Spiderman A-Frames" },
     { cycle: "Cycle 1", week: "Week 1", day: "Wednesday", timing: "40/20", warmUp: "Crawling Warm Up", exercises: ["Parallel Leg Bridge", "Starfish Twist", "Stork Stance"], coolDown: "Spiderman A-Frames" },
     { cycle: "Cycle 1", week: "Week 1", day: "Friday", timing: "40/20", warmUp: "Crawling Warm Up", exercises: ["Arm Haulers", "Parallel Leg Crunch", "Parallel Leg Bridge"], coolDown: "Spiderman A-Frames" },
@@ -116,9 +119,21 @@ const WORKOUT_NAMES = [
     { cycle: "Cycle 4", week: "Week 6", day: "Friday", timing: "50/10", warmUp: "Crawling Warm Up", exercises: ["Tripod Press", "AG Pull Up", "Stork Stance"], coolDown: "Arm Circles" },
 ];
 
-export const BUILT_IN_DATA: Workout[] = WORKOUT_NAMES.map(w => ({
-    ...w,
-    warmUp: createExercise(w.warmUp),
-    exercises: w.exercises.map(createExercise),
-    coolDown: createExercise(w.coolDown),
-}));
+export const BUILT_IN_DATA: Workout[] = WORKOUT_NAMES.map((w) => {
+    const { work, rest, rounds } = parseTiming(w.timing, w.rounds);
+    const id = `${w.cycle}|${w.week}|${w.day}|${w.timing}`.toLowerCase();
+
+    // Omit the optional 'rounds' from the raw workout object before spreading
+    const { rounds: _rawRounds, ...rawWorkoutRest } = w;
+
+    return {
+        ...rawWorkoutRest,
+        id,
+        work,
+        rest,
+        rounds,
+        warmUp: createExercise(w.warmUp),
+        exercises: w.exercises.map(createExercise),
+        coolDown: createExercise(w.coolDown),
+    };
+}).filter(assertWorkout);

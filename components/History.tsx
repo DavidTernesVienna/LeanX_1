@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import type { Workout, Progress, CycleGroup, WorkoutItem } from '../types';
 import * as ProgressService from '../services/progressService';
@@ -7,6 +8,7 @@ interface HistoryProps {
   progress: Progress;
   onSelectWorkout: (index: number) => void;
   onUpdateProgress: (newProgress: Progress) => void;
+  selectedWorkoutIndex: number | null;
 }
 
 const abbrDay = (day?: string) => day ? String(day).slice(0, 2) : '—';
@@ -24,12 +26,12 @@ const groupWorkouts = (workouts: Workout[], progress: Progress): CycleGroup[] =>
 
     return Array.from(map.entries()).map(([cycleName, weekMap]) => {
         const allItems = Array.from(weekMap.values()).flat();
-        const doneCount = allItems.filter(item => progress[ProgressService.getWorkoutUID(item.workout, item.index)]?.done).length;
+        const doneCount = allItems.filter(item => progress[ProgressService.getWorkoutUID(item.workout)]?.done).length;
         
         return {
             name: cycleName,
             weeks: Array.from(weekMap.entries()).map(([weekName, items]) => {
-                const weekDoneCount = items.filter(item => progress[ProgressService.getWorkoutUID(item.workout, item.index)]?.done).length;
+                const weekDoneCount = items.filter(item => progress[ProgressService.getWorkoutUID(item.workout)]?.done).length;
                 return {
                     name: weekName,
                     items,
@@ -48,14 +50,19 @@ const HistorySquare: React.FC<{
   progress: Progress,
   onSelectWorkout: (index: number) => void,
   onMarkDone: (uid: string) => void;
-}> = ({ item, progress, onSelectWorkout, onMarkDone }) => {
-    const uid = ProgressService.getWorkoutUID(item.workout, item.index);
+  isSelected: boolean;
+}> = ({ item, progress, onSelectWorkout, onMarkDone, isSelected }) => {
+    const uid = ProgressService.getWorkoutUID(item.workout);
     const pItem = progress[uid] || {};
 
-    const classes = ['w-6 h-6 rounded-md border transition-colors duration-200'];
-    if (pItem.done) classes.push('bg-accent border-accent');
+    const classes = ['w-6 h-6 rounded-md border transition-all duration-200 focus:outline-none'];
+    if (pItem.done) classes.push('bg-green-500 border-green-500');
     else if (pItem.inProgress) classes.push('bg-yellow-500 border-yellow-500');
     else classes.push('bg-gray-dark border-gray-light');
+    
+    if (isSelected) {
+        classes.push('ring-2 ring-offset-2 ring-accent ring-offset-background');
+    }
 
     const title = `${item.workout.day || 'Day'} — ${item.workout.week || 'Week'} — ${item.workout.cycle || 'Cycle'}\n${item.workout.timing || ''}`;
     
@@ -69,7 +76,7 @@ const HistorySquare: React.FC<{
     );
 }
 
-export const History: React.FC<HistoryProps> = ({ workouts, progress, onSelectWorkout, onUpdateProgress }) => {
+export const History: React.FC<HistoryProps> = ({ workouts, progress, onSelectWorkout, onUpdateProgress, selectedWorkoutIndex }) => {
   const [openCycles, setOpenCycles] = useState<Record<string, boolean>>(() => ProgressService.getCollapseState());
   const cycleGroups = useMemo(() => groupWorkouts(workouts, progress), [workouts, progress]);
 
@@ -82,7 +89,25 @@ export const History: React.FC<HistoryProps> = ({ workouts, progress, onSelectWo
   const handleMarkDone = (uid: string) => {
       const p = ProgressService.loadProgress();
       const current = p[uid] || {};
-      p[uid] = { ...current, done: true, inProgress: false, ts: Date.now() };
+      
+      // Toggle the done state
+      const isNowDone = !current.done;
+      
+      const newItem = { 
+        ...current, 
+        done: isNowDone, 
+        inProgress: false, 
+        ts: Date.now() 
+      };
+
+      // If we are un-marking a workout, it makes sense to clear the reps that were logged
+      // for that completed session.
+      if (!isNowDone) {
+        delete newItem.reps;
+      }
+      
+      p[uid] = newItem;
+
       ProgressService.saveProgress(p);
       onUpdateProgress(p);
   };
@@ -91,7 +116,7 @@ export const History: React.FC<HistoryProps> = ({ workouts, progress, onSelectWo
     let p = ProgressService.loadProgress();
     workouts.forEach((w, i) => {
       if (w.cycle === cycleName) {
-        const uid = ProgressService.getWorkoutUID(w, i);
+        const uid = ProgressService.getWorkoutUID(w);
         p[uid] = { done: true, inProgress: false, ts: Date.now() };
       }
     });
@@ -103,7 +128,7 @@ export const History: React.FC<HistoryProps> = ({ workouts, progress, onSelectWo
     let p = ProgressService.loadProgress();
     workouts.forEach((w, i) => {
       if (w.cycle === cycleName) {
-        const uid = ProgressService.getWorkoutUID(w, i);
+        const uid = ProgressService.getWorkoutUID(w);
         delete p[uid];
       }
     });
@@ -154,6 +179,7 @@ export const History: React.FC<HistoryProps> = ({ workouts, progress, onSelectWo
                          progress={progress}
                          onSelectWorkout={onSelectWorkout}
                          onMarkDone={handleMarkDone}
+                         isSelected={item.index === selectedWorkoutIndex}
                       />
                     ))}
                   </div>

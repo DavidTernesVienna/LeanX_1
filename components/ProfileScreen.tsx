@@ -38,11 +38,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profile, progress,
       // Only consider completed workouts with logged reps and a timestamp
       if (!item.done || !item.reps || !item.ts) continue;
 
-      const workoutIndex = parseInt(uid.split('|').pop() || '-1', 10);
-      if (workoutIndex === -1 || !workouts[workoutIndex]) continue;
+      const workout = workouts.find(w => w.id === uid);
+      if (!workout) continue;
       
-      const workout = workouts[workoutIndex];
-
       workout.exercises.forEach((exercise, i) => {
         const reps = item.reps![i] || 0;
         const currentStats = statsMap.get(exercise.name);

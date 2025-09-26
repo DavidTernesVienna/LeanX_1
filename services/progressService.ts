@@ -1,45 +1,104 @@
 
 import type { Workout, Progress, TimerSnapshot, Profile } from '../types';
 
+const SCHEMA_VERSION = 1;
+
 const PROGRESS_KEY = 'leanTimerProgress';
 const RESUME_KEY = 'leanTimerResume';
 const COLLAPSE_KEY = 'leanTimerCollapse';
 const YT_KEY = 'leanTimerYT';
 const PROFILE_KEY = 'leanTimerProfile';
 
-export const getWorkoutUID = (workout: Workout, index: number): string => 
-  `${workout.cycle || 'Cycle'}|${workout.week || 'Week'}|${workout.day || 'Day'}|${index}`;
+export const getWorkoutUID = (workout: Workout): string => workout.id;
+
+interface VersionedData<T> {
+  version: number;
+  data: T;
+}
 
 // --- Profile Management ---
 export const loadProfile = (): Profile | null => {
   try {
-    return JSON.parse(localStorage.getItem(PROFILE_KEY) || 'null');
+    const raw = localStorage.getItem(PROFILE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.version === SCHEMA_VERSION) {
+      return parsed.data as Profile;
+    }
+    
+    // No version or old version, treat as simple data and re-save it in new format
+    const profileData = parsed as Profile; 
+    saveProfile(profileData); 
+    return profileData;
+
   } catch {
     return null;
   }
 };
 
 export const saveProfile = (profile: Profile): void => {
-  localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  const versionedData: VersionedData<Profile> = {
+    version: SCHEMA_VERSION,
+    data: profile,
+  };
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(versionedData));
 };
 
 
 // --- Progress Management ---
 export const loadProgress = (): Progress => {
   try {
-    return JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}');
-  } catch {
+    const raw = localStorage.getItem(PROGRESS_KEY);
+    if (!raw) return {};
+
+    const parsed = JSON.parse(raw);
+    // If it's correctly versioned, return data
+    if (parsed && parsed.version === SCHEMA_VERSION) {
+      return parsed.data as Progress;
+    }
+    
+    // --- MIGRATION from v0 to v1 ---
+    console.log("Migrating progress data to schema v1...");
+    const oldProgress = parsed as Progress;
+    const migratedProgress: Progress = {};
+
+    for (const key in oldProgress) {
+        if (Object.prototype.hasOwnProperty.call(oldProgress, key)) {
+            const item = oldProgress[key];
+            // The breaking change was in TimerSnapshot (idxWorkout -> workoutId).
+            // Safest migration is to clear any in-progress state.
+            if (item.inProgress || item.snap) {
+                console.warn(`Migration: Clearing stale in-progress state for workout key: ${key}`);
+                item.inProgress = false;
+                delete item.snap;
+            }
+            migratedProgress[key] = item;
+        }
+    }
+
+    saveProgress(migratedProgress); // Save in new versioned format
+    return migratedProgress;
+
+  } catch (e) {
+    console.error("Failed to load or migrate progress, resetting.", e);
+    localStorage.removeItem(PROGRESS_KEY);
     return {};
   }
 };
 
 export const saveProgress = (progress: Progress): void => {
-  localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+  const versionedData: VersionedData<Progress> = {
+    version: SCHEMA_VERSION,
+    data: progress,
+  };
+  localStorage.setItem(PROGRESS_KEY, JSON.stringify(versionedData));
 };
 
 export const markDone = (uid: string): Progress => {
   const p = loadProgress();
   p[uid] = { ...(p[uid] || {}), done: true, inProgress: false, ts: Date.now() };
+  delete p[uid].snap;
   saveProgress(p);
   return p;
 };
@@ -156,19 +215,4 @@ export const parseCyclesText = (txt: string): Workout[] | null => {
     }
 
     return null;
-};
-
-// --- Timing Parsing ---
-export const parseTiming = (entry: Workout): { work: number, rest: number, rounds: number } => {
-    let work = 40, rest = 20, rounds = 3;
-    const t = String(entry.timing || '').trim();
-    const m = t.match(/^(\d+)\s*\/\s*(\d+)(?:\s*[xX]\s*(\d+))?/);
-    if (m) {
-        work = +m[1];
-        rest = +m[2];
-        if (m[3]) rounds = +m[3];
-    }
-    if (Number.isFinite(entry.rounds)) rounds = entry.rounds!;
-    if (Number.isFinite(entry.sets)) rounds = entry.sets!;
-    return { work, rest, rounds };
 };

@@ -1,21 +1,31 @@
 
+export type RawWorkout = {
+  cycle: string;
+  week: string;
+  day: string;
+  timing: string;
+  warmUp: string;
+  exercises: string[];
+  coolDown: string;
+  rounds?: number;
+};
+
 export interface Exercise {
   name: string;
   image: string;
   description: string[];
 }
 
-export interface Workout {
-  cycle: string;
-  week: string;
-  day: string;
-  timing: string;
+export type Workout = Omit<RawWorkout, 'warmUp' | 'exercises' | 'coolDown' | 'rounds'> & {
+  id: string;
+  work: number;
+  rest: number;
+  rounds: number;
   warmUp: Exercise;
   exercises: Exercise[];
   coolDown: Exercise;
-  rounds?: number;
-  sets?: number;
-}
+};
+
 
 export type AppView = 'home' | 'workout' | 'finished' | 'repTracking' | 'profile';
 
@@ -34,6 +44,8 @@ export interface ProgressItem {
 
 export type Progress = Record<string, ProgressItem>;
 
+export type WorkoutPhase = 'getready' | 'warmup' | 'work' | 'rest' | 'cooldown' | 'done';
+
 export enum TimerPhase {
   GET_READY = 'getready',
   WORK = 'work',
@@ -42,9 +54,10 @@ export enum TimerPhase {
 }
 
 export interface TimerSnapshot {
-  idxWorkout: number;
-  currentExerciseIndex: number; // Index in the flattened workout sequence
-  phase: TimerPhase;
+  workoutId: string;
+  phase: WorkoutPhase;
+  round: number;
+  exerciseIndex: number;
   seconds: number;
 }
 

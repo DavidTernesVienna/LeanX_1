@@ -1,7 +1,6 @@
 
 import React from 'react';
 import type { Workout, ProgressItem } from '../types';
-import * as ProgressService from '../services/progressService';
 
 export const PreviewScreen: React.FC<{ 
     workout: Workout; 
@@ -9,7 +8,7 @@ export const PreviewScreen: React.FC<{
     lastResult?: ProgressItem;
 }> = ({ workout, onStart, lastResult }) => {
     
-    const { work, rest, rounds } = ProgressService.parseTiming(workout);
+    const { work, rest, rounds } = workout;
 
     const totalDurationMinutes = Math.ceil(
       ( (work + rest) * workout.exercises.length * rounds ) / 60

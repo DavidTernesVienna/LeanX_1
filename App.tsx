@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { BUILT_IN_DATA } from './constants';
 import * as ProgressService from './services/progressService';
 import type { Workout, Progress, AppView, Profile } from './types';
@@ -17,17 +17,39 @@ const App: React.FC = () => {
     const [profile, setProfile] = useState<Profile | null>(() => ProgressService.loadProfile());
     const [view, setView] = useState<AppView>('home');
     const [selectedWorkoutIndex, setSelectedWorkoutIndex] = useState<number | null>(null);
+    const isInitialLoad = useRef(true);
 
     const selectedWorkout = selectedWorkoutIndex !== null ? workouts[selectedWorkoutIndex] : null;
 
     useEffect(() => {
-        // On initial load, find the first not-done workout and set it as the default selection.
-        const resumeSnap = ProgressService.loadResume();
-        if (resumeSnap) {
-            setSelectedWorkoutIndex(resumeSnap.idxWorkout);
+        if (!isInitialLoad.current || workouts.length === 0) return;
+        
+        isInitialLoad.current = false;
+
+        let resumeWorkoutIndex = -1;
+        const progressWithKeys = Object.entries(progress);
+        const inProgressEntry = progressWithKeys.find(([,p]) => p.inProgress && p.snap);
+
+        if (inProgressEntry) {
+            const workoutIdToResume = inProgressEntry[1].snap?.workoutId;
+            if (workoutIdToResume) {
+                const foundIndex = workouts.findIndex(w => w.id === workoutIdToResume);
+                if (foundIndex !== -1) {
+                    resumeWorkoutIndex = foundIndex;
+                } else {
+                    console.warn(`Workout to resume (id: ${workoutIdToResume}) not found. Clearing state.`);
+                    ProgressService.clearInProgress(inProgressEntry[0]);
+                }
+            }
+        }
+        
+        if (resumeWorkoutIndex !== -1) {
+            setSelectedWorkoutIndex(resumeWorkoutIndex);
+            setView('workout');
         } else {
-            const firstNotDone = workouts.findIndex((w, i) => !progress[ProgressService.getWorkoutUID(w, i)]?.done);
+            const firstNotDone = workouts.findIndex((w) => !progress[ProgressService.getWorkoutUID(w)]?.done);
             setSelectedWorkoutIndex(firstNotDone >= 0 ? firstNotDone : 0);
+            setView('home');
         }
     }, [workouts, progress]);
 
@@ -46,33 +68,41 @@ const App: React.FC = () => {
     };
 
     const handleWorkoutFinish = useCallback(() => {
-        if (selectedWorkout && selectedWorkoutIndex !== null) {
-            const uid = ProgressService.getWorkoutUID(selectedWorkout, selectedWorkoutIndex);
+        if (selectedWorkout) {
+            const uid = ProgressService.getWorkoutUID(selectedWorkout);
             const newProgress = ProgressService.markDone(uid);
             setProgress(newProgress);
         }
         setView('finished');
-    }, [selectedWorkout, selectedWorkoutIndex]);
+    }, [selectedWorkout]);
 
     const handleLogReps = () => {
         setView('repTracking');
     };
 
-    const handleContinueFromFinish = () => {
-        const firstNotDone = workouts.findIndex((w, i) => !progress[ProgressService.getWorkoutUID(w, i)]?.done);
-        setSelectedWorkoutIndex(firstNotDone >= 0 ? firstNotDone : 0);
+    const handleReturnToHomeWithNextWorkout = () => {
+        if (selectedWorkoutIndex !== null) {
+            const nextIndex = (selectedWorkoutIndex + 1) % workouts.length;
+            setSelectedWorkoutIndex(nextIndex);
+        } else {
+            // Fallback if index is somehow lost: find first not done.
+            const firstNotDone = workouts.findIndex((w) => !progress[ProgressService.getWorkoutUID(w)]?.done);
+            setSelectedWorkoutIndex(firstNotDone >= 0 ? firstNotDone : 0);
+        }
         setView('home');
     };
 
+    const handleContinueFromFinish = () => {
+        handleReturnToHomeWithNextWorkout();
+    };
+
     const handleSaveReps = (reps: number[]) => {
-        if (selectedWorkout && selectedWorkoutIndex !== null) {
-            const uid = ProgressService.getWorkoutUID(selectedWorkout, selectedWorkoutIndex);
+        if (selectedWorkout) {
+            const uid = ProgressService.getWorkoutUID(selectedWorkout);
             const newProgress = ProgressService.saveRepsForWorkout(uid, reps);
             setProgress(newProgress);
         }
-        const firstNotDone = workouts.findIndex((w, i) => !progress[ProgressService.getWorkoutUID(w, i)]?.done);
-        setSelectedWorkoutIndex(firstNotDone >= 0 ? firstNotDone : 0);
-        setView('home');
+        handleReturnToHomeWithNextWorkout();
     };
     
     const handleSaveProfile = (name: string) => {
@@ -82,9 +112,18 @@ const App: React.FC = () => {
     };
 
     const handleBack = () => {
-        if (view === 'workout') setView('home');
-        else if (view === 'repTracking') setView('finished');
-        else if (view === 'profile') setView('home');
+        if (view === 'workout' && selectedWorkout) {
+            const uid = ProgressService.getWorkoutUID(selectedWorkout);
+            const newProgress = ProgressService.clearInProgress(uid);
+            setProgress(newProgress);
+            setView('home');
+        } else if (view === 'repTracking') {
+             setView('finished');
+        } else if (view === 'profile') {
+            setView('home');
+        } else {
+            setView('home');
+        }
     };
 
     const renderView = () => {
@@ -111,8 +150,8 @@ const App: React.FC = () => {
                 />;
             case 'home':
             default:
-                const uid = selectedWorkout && selectedWorkoutIndex !== null 
-                    ? ProgressService.getWorkoutUID(selectedWorkout, selectedWorkoutIndex) 
+                const uid = selectedWorkout
+                    ? ProgressService.getWorkoutUID(selectedWorkout)
                     : null;
                 const lastResult = uid ? progress[uid] : undefined;
 
@@ -138,6 +177,7 @@ const App: React.FC = () => {
                             progress={progress}
                             onSelectWorkout={handleSelectWorkout}
                             onUpdateProgress={handleUpdateProgress}
+                            selectedWorkoutIndex={selectedWorkoutIndex}
                         />
                     </div>
                 );
