@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { BUILT_IN_DATA } from './constants';
 import * as ProgressService from './services/progressService';
-import type { Workout, Progress, AppView, Profile } from './types';
+import type { Workout, Progress, AppView, Profile, Settings } from './types';
 import { History } from './components/History';
 import { PreviewScreen } from './components/PreviewScreen';
 import { WorkoutScreen } from './components/WorkoutScreen';
@@ -15,6 +15,8 @@ const App: React.FC = () => {
     const [workouts, setWorkouts] = useState<Workout[]>(BUILT_IN_DATA);
     const [progress, setProgress] = useState<Progress>(() => ProgressService.loadProgress());
     const [profile, setProfile] = useState<Profile | null>(() => ProgressService.loadProfile());
+    const [settings, setSettings] = useState<Settings>(() => ProgressService.loadSettings());
+    const [sessionReps, setSessionReps] = useState<(number | null)[]>([]);
     const [view, setView] = useState<AppView>('home');
     const [selectedWorkoutIndex, setSelectedWorkoutIndex] = useState<number | null>(null);
     const isInitialLoad = useRef(true);
@@ -63,6 +65,7 @@ const App: React.FC = () => {
     
     const handleStartWorkout = () => {
         if (selectedWorkout) {
+            setSessionReps(Array(selectedWorkout.exercises.length).fill(null));
             setView('workout');
         }
     };
@@ -111,6 +114,11 @@ const App: React.FC = () => {
         setProfile(newProfile);
     };
 
+    const handleUpdateSettings = (newSettings: Settings) => {
+        setSettings(newSettings);
+        ProgressService.saveSettings(newSettings);
+    };
+
     const handleBack = () => {
         if (view === 'workout' && selectedWorkout) {
             const uid = ProgressService.getWorkoutUID(selectedWorkout);
@@ -129,15 +137,27 @@ const App: React.FC = () => {
     const renderView = () => {
         switch (view) {
             case 'workout':
-                if (selectedWorkout && selectedWorkoutIndex !== null) {
-                    return <WorkoutScreen workout={selectedWorkout} workoutIndex={selectedWorkoutIndex} onBack={handleBack} onFinish={handleWorkoutFinish} />;
+                if (selectedWorkout) {
+                    return <WorkoutScreen 
+                        workout={selectedWorkout} 
+                        settings={settings}
+                        sessionReps={sessionReps}
+                        setSessionReps={setSessionReps}
+                        onBack={handleBack} 
+                        onFinish={handleWorkoutFinish} 
+                    />;
                 }
                 return null;
             case 'finished':
                 return <FinishedScreen onLogReps={handleLogReps} onContinue={handleContinueFromFinish} />;
             case 'repTracking':
                 if (selectedWorkout) {
-                    return <RepTrackingScreen workout={selectedWorkout} onSaveReps={handleSaveReps} onBack={handleBack} />;
+                    return <RepTrackingScreen 
+                        workout={selectedWorkout} 
+                        onSaveReps={handleSaveReps} 
+                        onBack={handleBack} 
+                        initialReps={sessionReps}
+                    />;
                 }
                 return null;
             case 'profile':
@@ -147,6 +167,8 @@ const App: React.FC = () => {
                     workouts={workouts} 
                     onSaveProfile={handleSaveProfile} 
                     onBack={handleBack} 
+                    settings={settings}
+                    onUpdateSettings={handleUpdateSettings}
                 />;
             case 'home':
             default:

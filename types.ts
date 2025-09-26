@@ -33,6 +33,11 @@ export interface Profile {
   name: string;
 }
 
+export interface Settings {
+  audioCues: boolean;
+  trackReps: boolean;
+}
+
 // --- Types for progress tracking ---
 export interface ProgressItem {
   done?: boolean;
@@ -59,6 +64,7 @@ export interface TimerSnapshot {
   round: number;
   exerciseIndex: number;
   seconds: number;
+  sessionReps?: (number | null)[];
 }
 
 

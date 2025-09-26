@@ -1,5 +1,6 @@
+
 import React, { useState, useMemo } from 'react';
-import type { Profile, Progress, Workout, ProgressItem } from '../types';
+import type { Profile, Progress, Workout, ProgressItem, Settings } from '../types';
 import { BackArrowIcon } from './icons';
 
 interface ProfileScreenProps {
@@ -8,9 +9,11 @@ interface ProfileScreenProps {
   workouts: Workout[];
   onSaveProfile: (name: string) => void;
   onBack: () => void;
+  settings: Settings;
+  onUpdateSettings: (settings: Settings) => void;
 }
 
-export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profile, progress, workouts, onSaveProfile, onBack }) => {
+export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profile, progress, workouts, onSaveProfile, onBack, settings, onUpdateSettings }) => {
   const [name, setName] = useState('');
 
   const stats = useMemo(() => {
@@ -77,6 +80,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profile, progress,
     }
   };
 
+   const handleSettingChange = (key: keyof Settings, value: boolean) => {
+    const newSettings = { ...settings, [key]: value };
+    onUpdateSettings(newSettings);
+  };
+
   if (!profile) {
     return (
       <div className="min-h-screen flex flex-col p-4">
@@ -108,7 +116,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profile, progress,
   }
 
   return (
-    <div className="min-h-screen flex flex-col p-4">
+    <div className="min-h-screen flex flex-col p-4 overflow-y-auto">
       <header className="flex items-center mb-6">
         <button onClick={onBack} className="p-2 -ml-2">
           <BackArrowIcon className="w-6 h-6" />
@@ -128,6 +136,36 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profile, progress,
         </div>
       </div>
       
+       <div className="bg-gray-dark rounded-xl p-4 mb-6">
+        <h3 className="font-bold text-lg text-center mb-4">Settings</h3>
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <label htmlFor="audio-cues" className="font-medium">Audio Cues</label>
+            <button
+              id="audio-cues"
+              role="switch"
+              aria-checked={settings.audioCues}
+              onClick={() => handleSettingChange('audioCues', !settings.audioCues)}
+              className={`w-14 h-8 rounded-full flex items-center p-1 transition-colors ${settings.audioCues ? 'bg-accent' : 'bg-gray-light'}`}
+            >
+              <span className={`w-6 h-6 bg-white rounded-full transition-transform transform ${settings.audioCues ? 'translate-x-6' : 'translate-x-0'}`} />
+            </button>
+          </div>
+          <div className="flex justify-between items-center">
+            <label htmlFor="track-reps" className="font-medium">Track Reps In-Workout</label>
+            <button
+              id="track-reps"
+              role="switch"
+              aria-checked={settings.trackReps}
+              onClick={() => handleSettingChange('trackReps', !settings.trackReps)}
+              className={`w-14 h-8 rounded-full flex items-center p-1 transition-colors ${settings.trackReps ? 'bg-accent' : 'bg-gray-light'}`}
+            >
+              <span className={`w-6 h-6 bg-white rounded-full transition-transform transform ${settings.trackReps ? 'translate-x-6' : 'translate-x-0'}`} />
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="flex-grow flex flex-col bg-gray-dark rounded-xl p-4 space-y-3">
         <h3 className="font-bold text-lg text-center">Exercise Totals</h3>
         <div className="overflow-y-auto flex-grow pr-1">
@@ -153,7 +191,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profile, progress,
             </div>
         </div>
       </div>
-
     </div>
   );
 };

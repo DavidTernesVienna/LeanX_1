@@ -1,7 +1,11 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import type { Workout, Exercise, WorkoutPhase, TimerSnapshot } from '../types';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import type { Workout, Exercise, WorkoutPhase, TimerSnapshot, Settings } from '../types';
 import * as ProgressService from '../services/progressService';
 import { BackArrowIcon, InfoIcon, PauseIcon, PlayIcon, NextIcon, PrevIcon } from './icons';
+import { Numpad } from './RepTrackingScreen';
+
+const BEEP_SOUND = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YRisAAAAAQAAAAAAAAC/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v-');
+const PHASE_CHANGE_SOUND = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YRiMAAAAAAAA/+9/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v-');
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const formatTime = (s: number) => `${pad(Math.floor(s / 60))}:${pad(Math.floor(s % 60))}`;
@@ -72,10 +76,12 @@ const ProgressIndicator: React.FC<{
 
 export const WorkoutScreen: React.FC<{
     workout: Workout;
-    workoutIndex: number;
+    settings: Settings;
+    sessionReps: (number | null)[];
+    setSessionReps: React.Dispatch<React.SetStateAction<(number | null)[]>>;
     onBack: () => void;
     onFinish: () => void;
-}> = ({ workout, workoutIndex, onBack, onFinish }) => {
+}> = ({ workout, settings, sessionReps, setSessionReps, onBack, onFinish }) => {
     const { work, rest, rounds } = workout;
 
     const [phase, setPhase] = useState<WorkoutPhase>('getready');
@@ -83,12 +89,19 @@ export const WorkoutScreen: React.FC<{
     const [round, setRound] = useState(1);
     const [seconds, setSeconds] = useState(5); // Get ready time
     const [running, setRunning] = useState(true);
-    // Fix: Initialize useRef with null and update the type to allow null.
-    // This resolves the error where useRef was called without an initial value,
-    // which is required when a generic type parameter is provided.
+    
+    const [numpadVisible, setNumpadVisible] = useState(false);
+    const [numpadExerciseIndex, setNumpadExerciseIndex] = useState<number | null>(null);
+    
     const timerStateRef = useRef<TimerSnapshot | null>(null);
 
-    // Initial state setup from resume data
+    const playSound = useCallback((sound: HTMLAudioElement) => {
+        if (settings.audioCues) {
+            sound.currentTime = 0;
+            sound.play().catch(e => console.error("Error playing sound:", e));
+        }
+    }, [settings.audioCues]);
+
     useEffect(() => {
         const progress = ProgressService.loadProgress();
         const pItem = progress[workout.id];
@@ -104,10 +117,11 @@ export const WorkoutScreen: React.FC<{
             setSeconds(snap.seconds);
             setExerciseIndex(clampedExIndex);
             setRound(clampedRound);
+            if (snap.sessionReps) {
+                setSessionReps(snap.sessionReps);
+            }
         }
-    // Fix: The dependency on `rounds` was redundant because it is derived from `workout`.
-    // This effect should only re-run when the `workout` prop itself changes.
-    }, [workout]);
+    }, [workout, rounds, setSessionReps]);
 
     const currentExercise: Exercise = useMemo(() => {
         if (phase === 'warmup') return workout.warmUp;
@@ -116,31 +130,48 @@ export const WorkoutScreen: React.FC<{
         return workout.warmUp; // Default for 'getready'
     }, [phase, exerciseIndex, workout]);
 
+    const handlePhaseChange = useCallback((newPhase: WorkoutPhase) => {
+        playSound(PHASE_CHANGE_SOUND);
+        setPhase(newPhase);
+    }, [playSound]);
+
     useEffect(() => {
         if (!running) return;
 
         const interval = setInterval(() => {
             setSeconds(s => {
-                if (s > 1) return s - 1;
+                if (s > 1) {
+                    if (s <= 4 && (phase === 'work' || phase === 'rest')) {
+                         playSound(BEEP_SOUND);
+                    }
+                    return s - 1;
+                }
                 
-                // Timer hits 0, transition to next phase
+                // --- Timer hits 0, transition to next phase ---
+                setNumpadVisible(false);
+                setNumpadExerciseIndex(null);
+                
                 if (phase === 'getready') {
-                    setPhase('warmup');
+                    handlePhaseChange('warmup');
                     return work;
                 }
                 if (phase === 'warmup') {
-                    setPhase('work');
+                    handlePhaseChange('work');
                     setExerciseIndex(0);
                     setRound(1);
                     return work;
                 }
                 if (phase === 'work') {
-                    // Don't rest after the last exercise of the last round
                     if (round === rounds && exerciseIndex === workout.exercises.length - 1) {
-                         setPhase('cooldown');
+                         handlePhaseChange('cooldown');
                          return work;
                     }
-                    setPhase('rest');
+                    
+                    handlePhaseChange('rest');
+                    if (settings.trackReps) {
+                        setNumpadExerciseIndex(exerciseIndex);
+                        setNumpadVisible(true);
+                    }
                     return rest;
                 }
                 if (phase === 'rest') {
@@ -151,11 +182,11 @@ export const WorkoutScreen: React.FC<{
                         setRound(r => r + 1);
                         setExerciseIndex(0);
                     }
-                    setPhase('work');
+                    handlePhaseChange('work');
                     return work;
                 }
                 if (phase === 'cooldown') {
-                    setPhase('done');
+                    handlePhaseChange('done');
                     onFinish();
                     return 0;
                 }
@@ -164,9 +195,8 @@ export const WorkoutScreen: React.FC<{
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [running, phase, work, rest, rounds, workout.exercises.length, onFinish, round, exerciseIndex]);
+    }, [running, phase, work, rest, rounds, workout.exercises.length, onFinish, round, exerciseIndex, handlePhaseChange, playSound, settings.trackReps]);
     
-    // Effect to save progress when state changes
     useEffect(() => {
         const snapshot: TimerSnapshot = {
             workoutId: workout.id,
@@ -174,16 +204,15 @@ export const WorkoutScreen: React.FC<{
             round,
             exerciseIndex,
             seconds,
+            sessionReps,
         };
         timerStateRef.current = snapshot;
         
-        // Save progress if the timer is running and we are in an active state
         if (running && phase !== 'done' && phase !== 'getready') {
             ProgressService.markInProgress(workout.id, snapshot);
         }
-    }, [workout.id, phase, round, exerciseIndex, seconds, running]);
+    }, [workout.id, phase, round, exerciseIndex, seconds, running, sessionReps]);
 
-    // Cleanup effect to save state on unmount
     useEffect(() => {
         return () => {
             if (timerStateRef.current && timerStateRef.current.phase !== 'done') {
@@ -194,6 +223,8 @@ export const WorkoutScreen: React.FC<{
 
     const changeExercise = (direction: 1 | -1) => {
         setRunning(false);
+        setNumpadVisible(false);
+        setNumpadExerciseIndex(null);
 
         if (phase === 'getready' && direction === 1) {
             setPhase('warmup');
@@ -250,6 +281,21 @@ export const WorkoutScreen: React.FC<{
              }
         }
     };
+    
+    const handleNumpadDone = (value: string) => {
+        if (numpadExerciseIndex !== null) {
+          const newRepsValue = parseInt(value, 10);
+          const finalReps = isNaN(newRepsValue) ? null : newRepsValue;
+          setSessionReps(prev => {
+            const newReps = [...prev];
+            newReps[numpadExerciseIndex] = finalReps;
+            return newReps;
+          });
+        }
+        setNumpadVisible(false);
+        setNumpadExerciseIndex(null);
+    };
+
 
     const handleNext = () => changeExercise(1);
     const handlePrev = () => changeExercise(-1);
@@ -323,6 +369,18 @@ export const WorkoutScreen: React.FC<{
                     </button>
                 </div>
             </div>
+            
+            {numpadVisible && numpadExerciseIndex !== null && (
+              <Numpad
+                exerciseName={workout.exercises[numpadExerciseIndex].name}
+                initialValue={String(sessionReps[numpadExerciseIndex] ?? '')}
+                onDone={handleNumpadDone}
+                onClose={() => {
+                  setNumpadVisible(false);
+                  setNumpadExerciseIndex(null);
+                }}
+              />
+            )}
         </div>
     );
 };

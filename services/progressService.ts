@@ -1,5 +1,5 @@
 
-import type { Workout, Progress, TimerSnapshot, Profile } from '../types';
+import type { Workout, Progress, TimerSnapshot, Profile, Settings } from '../types';
 
 const SCHEMA_VERSION = 1;
 
@@ -8,6 +8,7 @@ const RESUME_KEY = 'leanTimerResume';
 const COLLAPSE_KEY = 'leanTimerCollapse';
 const YT_KEY = 'leanTimerYT';
 const PROFILE_KEY = 'leanTimerProfile';
+const SETTINGS_KEY = 'leanTimerSettings';
 
 export const getWorkoutUID = (workout: Workout): string => workout.id;
 
@@ -15,6 +16,24 @@ interface VersionedData<T> {
   version: number;
   data: T;
 }
+
+// --- Settings Management ---
+export const loadSettings = (): Settings => {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) {
+      return JSON.parse(raw) as Settings;
+    }
+  } catch {
+    // ignore error, return default
+  }
+  // Default settings
+  return { audioCues: true, trackReps: true }; 
+};
+
+export const saveSettings = (settings: Settings): void => {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+};
 
 // --- Profile Management ---
 export const loadProfile = (): Profile | null => {
