@@ -1,8 +1,10 @@
 
+
 export type RawWorkout = {
   cycle: string;
   week: string;
   day: string;
+  preWarmUp: string;
   timing: string;
   warmUp: string;
   exercises: string[];
@@ -16,18 +18,20 @@ export interface Exercise {
   description: string[];
 }
 
-export type Workout = Omit<RawWorkout, 'warmUp' | 'exercises' | 'coolDown' | 'rounds'> & {
+export type Workout = Omit<RawWorkout, 'warmUp' | 'exercises' | 'coolDown' | 'rounds' | 'preWarmUp'> & {
   id: string;
   work: number;
   rest: number;
   rounds: number;
+  preWarmUp: Exercise;
   warmUp: Exercise;
+  warmUpExercises: Exercise[];
   exercises: Exercise[];
   coolDown: Exercise;
 };
 
 
-export type AppView = 'home' | 'workout' | 'finished' | 'repTracking' | 'profile';
+export type AppView = 'home' | 'workout' | 'finished' | 'repTracking' | 'profile' | 'tutorial';
 
 export interface Profile {
   name: string;
@@ -36,6 +40,9 @@ export interface Profile {
 export interface Settings {
   audioCues: boolean;
   trackReps: boolean;
+  enableWarmup: boolean;
+  enableCooldown: boolean;
+  enableGlassMotion: boolean;
 }
 
 // --- Types for progress tracking ---
@@ -49,7 +56,16 @@ export interface ProgressItem {
 
 export type Progress = Record<string, ProgressItem>;
 
-export type WorkoutPhase = 'getready' | 'warmup' | 'work' | 'rest' | 'cooldown' | 'done';
+export type WorkoutPhase = 
+  'getready' | 
+  'warmup' | 
+  'warmup_rest' |
+  'getready_work' |
+  'work' | 
+  'rest' | 
+  'getready_cooldown' |
+  'cooldown' | 
+  'done';
 
 export enum TimerPhase {
   GET_READY = 'getready',
@@ -65,6 +81,8 @@ export interface TimerSnapshot {
   exerciseIndex: number;
   seconds: number;
   sessionReps?: (number | null)[];
+  warmupStage?: number;
+  cooldownStage?: number;
 }
 
 

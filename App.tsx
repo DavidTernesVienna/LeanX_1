@@ -1,15 +1,18 @@
 
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { BUILT_IN_DATA } from './constants';
 import * as ProgressService from './services/progressService';
-import type { Workout, Progress, AppView, Profile, Settings } from './types';
+import type { Workout, Progress, AppView, Profile, Settings, ProgressItem, Exercise } from './types';
 import { History } from './components/History';
 import { PreviewScreen } from './components/PreviewScreen';
 import { WorkoutScreen } from './components/WorkoutScreen';
 import { FinishedScreen } from './components/FinishedScreen';
 import { RepTrackingScreen } from './components/RepTrackingScreen';
 import { ProfileScreen } from './components/ProfileScreen';
-import { UserIcon } from './components/icons';
+import { TutorialScreen } from './components/TutorialScreen';
+import { ExerciseDetailModal } from './components/ExerciseDetailModal';
+import { UserIcon, BookIcon } from './components/icons';
 
 const App: React.FC = () => {
     const [workouts, setWorkouts] = useState<Workout[]>(BUILT_IN_DATA);
@@ -19,6 +22,7 @@ const App: React.FC = () => {
     const [sessionReps, setSessionReps] = useState<(number | null)[]>([]);
     const [view, setView] = useState<AppView>('home');
     const [selectedWorkoutIndex, setSelectedWorkoutIndex] = useState<number | null>(null);
+    const [modalExercise, setModalExercise] = useState<Exercise | null>(null);
     const isInitialLoad = useRef(true);
 
     const selectedWorkout = selectedWorkoutIndex !== null ? workouts[selectedWorkoutIndex] : null;
@@ -30,10 +34,12 @@ const App: React.FC = () => {
 
         let resumeWorkoutIndex = -1;
         const progressWithKeys = Object.entries(progress);
-        const inProgressEntry = progressWithKeys.find(([,p]) => p.inProgress && p.snap);
+        // FIX: Cast `p` to `ProgressItem` to access its properties, as `Object.entries` may return `[string, unknown]`.
+        const inProgressEntry = progressWithKeys.find(([,p]) => (p as ProgressItem).inProgress && (p as ProgressItem).snap);
 
         if (inProgressEntry) {
-            const workoutIdToResume = inProgressEntry[1].snap?.workoutId;
+            // FIX: Cast `inProgressEntry[1]` to `ProgressItem` to access its properties.
+            const workoutIdToResume = (inProgressEntry[1] as ProgressItem).snap?.workoutId;
             if (workoutIdToResume) {
                 const foundIndex = workouts.findIndex(w => w.id === workoutIdToResume);
                 if (foundIndex !== -1) {
@@ -127,11 +133,15 @@ const App: React.FC = () => {
             setView('home');
         } else if (view === 'repTracking') {
              setView('finished');
-        } else if (view === 'profile') {
+        } else if (view === 'profile' || view === 'tutorial') {
             setView('home');
         } else {
             setView('home');
         }
+    };
+
+    const handleSaveAndExitWorkout = () => {
+        setView('home');
     };
 
     const renderView = () => {
@@ -141,10 +151,13 @@ const App: React.FC = () => {
                     return <WorkoutScreen 
                         workout={selectedWorkout} 
                         settings={settings}
+                        onUpdateSettings={handleUpdateSettings}
                         sessionReps={sessionReps}
                         setSessionReps={setSessionReps}
                         onBack={handleBack} 
-                        onFinish={handleWorkoutFinish} 
+                        onFinish={handleWorkoutFinish}
+                        onShowExerciseInfo={setModalExercise}
+                        onSaveAndExit={handleSaveAndExitWorkout}
                     />;
                 }
                 return null;
@@ -170,6 +183,11 @@ const App: React.FC = () => {
                     settings={settings}
                     onUpdateSettings={handleUpdateSettings}
                 />;
+            case 'tutorial':
+                return <TutorialScreen
+                    onSelectExercise={setModalExercise}
+                    onBack={handleBack}
+                />
             case 'home':
             default:
                 const uid = selectedWorkout
@@ -181,9 +199,14 @@ const App: React.FC = () => {
                     <div className="p-4 space-y-4">
                         <div className="flex justify-between items-center">
                             <h1 className="text-2xl font-bold">Lean Interval Timer</h1>
-                            <button onClick={() => setView('profile')} className="p-2 -mr-2 text-gray-text hover:text-off-white transition-colors">
-                                <UserIcon className="w-6 h-6" />
-                            </button>
+                             <div className="flex items-center">
+                                <button onClick={() => setView('tutorial')} className="p-2 text-gray-text hover:text-off-white transition-colors">
+                                    <BookIcon className="w-6 h-6" />
+                                </button>
+                                <button onClick={() => setView('profile')} className="p-2 -mr-2 text-gray-text hover:text-off-white transition-colors">
+                                    <UserIcon className="w-6 h-6" />
+                                </button>
+                            </div>
                         </div>
 
                         {selectedWorkout && (
@@ -209,6 +232,12 @@ const App: React.FC = () => {
     return (
         <main className="min-h-screen">
             {renderView()}
+            {modalExercise && (
+                <ExerciseDetailModal 
+                    exercise={modalExercise}
+                    onClose={() => setModalExercise(null)}
+                />
+            )}
         </main>
     );
 };

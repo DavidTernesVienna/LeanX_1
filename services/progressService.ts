@@ -1,4 +1,5 @@
 
+
 import type { Workout, Progress, TimerSnapshot, Profile, Settings } from '../types';
 
 const SCHEMA_VERSION = 1;
@@ -22,13 +23,27 @@ export const loadSettings = (): Settings => {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (raw) {
-      return JSON.parse(raw) as Settings;
+      const parsed = JSON.parse(raw);
+      // Ensure all keys are present for backward compatibility
+      return {
+        audioCues: parsed.audioCues ?? true,
+        trackReps: parsed.trackReps ?? true,
+        enableWarmup: parsed.enableWarmup ?? true,
+        enableCooldown: parsed.enableCooldown ?? true,
+        enableGlassMotion: parsed.enableGlassMotion ?? true,
+      };
     }
   } catch {
     // ignore error, return default
   }
   // Default settings
-  return { audioCues: true, trackReps: true }; 
+  return { 
+    audioCues: true, 
+    trackReps: true,
+    enableWarmup: true,
+    enableCooldown: true,
+    enableGlassMotion: true,
+  }; 
 };
 
 export const saveSettings = (settings: Settings): void => {

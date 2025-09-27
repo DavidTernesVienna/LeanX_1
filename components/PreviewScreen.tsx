@@ -1,4 +1,3 @@
-
 import React from 'react';
 import type { Workout, ProgressItem } from '../types';
 
@@ -8,38 +7,44 @@ export const PreviewScreen: React.FC<{
     lastResult?: ProgressItem;
 }> = ({ workout, onStart, lastResult }) => {
     
-    const { work, rest, rounds } = workout;
-
-    const totalDurationMinutes = Math.ceil(
-      ( (work + rest) * workout.exercises.length * rounds ) / 60
-    );
-    
     const workoutTitle = `${workout.cycle}, ${workout.week}, ${workout.day}`;
 
     return (
         <div className="bg-gray-dark rounded-xl p-4 space-y-4">
-            <div>
-                <p className="text-sm text-gray-text">Next up</p>
-                <h2 className="text-xl font-bold">{workoutTitle}</h2>
-            </div>
-            
-            <div className="flex items-center justify-between text-center">
-                <div>
-                    <span className="text-4xl font-bold">{totalDurationMinutes}</span>
-                    <span className="text-lg font-semibold ml-1">min</span>
+            <div className="space-y-1">
+                <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-text">Next up</p>
+                    <p className="text-sm text-gray-text">timing</p>
                 </div>
-                <div className="text-gray-text">
-                     <div className="font-semibold text-lg text-off-white">{workout.timing}</div>
-                    <div>timing</div>
+                <div className="flex justify-between items-baseline">
+                    <h2 className="text-xl font-bold">{workoutTitle}</h2>
+                    <div className="font-semibold text-2xl text-off-white">{workout.timing}</div>
                 </div>
             </div>
 
-            <div className="text-sm space-y-1 text-off-white/80 max-h-40 overflow-y-auto pt-2 border-t border-gray-light/50">
-                <p><span className="font-semibold">Warm Up:</span> {workout.warmUp.name}</p>
+            <div className="space-y-4 text-off-white/80 pt-4 border-t border-gray-light/50 px-4">
+                <div className="flex items-center gap-4">
+                    <img src={workout.warmUp.image} alt={workout.warmUp.name} className="w-12 h-12 rounded-md object-cover bg-gray-light flex-shrink-0" />
+                    <div>
+                        <p className="font-semibold text-gray-text">Warm Up</p>
+                        <p className="text-off-white text-lg">{workout.warmUp.name}</p>
+                    </div>
+                </div>
+
                 {workout.exercises.map((ex, i) => (
-                    <p key={i}>• {ex.name}</p>
+                    <div key={i} className="flex items-center gap-4 pl-8">
+                        <img src={ex.image} alt={ex.name} className="w-12 h-12 rounded-md object-cover bg-gray-light flex-shrink-0" />
+                        <p className="text-lg">{ex.name}</p>
+                    </div>
                 ))}
-                <p><span className="font-semibold">Cool Down:</span> {workout.coolDown.name}</p>
+                
+                <div className="flex items-center gap-4">
+                    <img src={workout.coolDown.image} alt={workout.coolDown.name} className="w-12 h-12 rounded-md object-cover bg-gray-light flex-shrink-0" />
+                    <div>
+                        <p className="font-semibold text-gray-text">Cool Down</p>
+                        <p className="text-off-white text-lg">{workout.coolDown.name}</p>
+                    </div>
+                </div>
             </div>
 
             {lastResult?.reps && lastResult.reps.length > 0 && (

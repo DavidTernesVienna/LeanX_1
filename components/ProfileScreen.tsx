@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo } from 'react';
 import type { Profile, Progress, Workout, ProgressItem, Settings } from '../types';
 import { BackArrowIcon } from './icons';
@@ -12,6 +13,29 @@ interface ProfileScreenProps {
   settings: Settings;
   onUpdateSettings: (settings: Settings) => void;
 }
+
+const ToggleSwitch: React.FC<{
+  label: string;
+  labelId: string;
+  checked: boolean;
+  onChange: () => void;
+}> = ({ label, labelId, checked, onChange }) => (
+  <div className="flex justify-between items-center">
+    <label id={labelId} className="font-medium">{label}</label>
+    <button
+      role="switch"
+      aria-checked={checked}
+      aria-labelledby={labelId}
+      onClick={onChange}
+      className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${checked ? 'bg-accent' : 'bg-gray-light'}`}
+    >
+      <span
+        className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${checked ? 'translate-x-7' : 'translate-x-1'}`}
+      />
+    </button>
+  </div>
+);
+
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profile, progress, workouts, onSaveProfile, onBack, settings, onUpdateSettings }) => {
   const [name, setName] = useState('');
@@ -139,30 +163,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profile, progress,
        <div className="bg-gray-dark rounded-xl p-4 mb-6">
         <h3 className="font-bold text-lg text-center mb-4">Settings</h3>
         <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <label htmlFor="audio-cues" className="font-medium">Audio Cues</label>
-            <button
-              id="audio-cues"
-              role="switch"
-              aria-checked={settings.audioCues}
-              onClick={() => handleSettingChange('audioCues', !settings.audioCues)}
-              className={`w-14 h-8 rounded-full flex items-center p-1 transition-colors ${settings.audioCues ? 'bg-accent' : 'bg-gray-light'}`}
-            >
-              <span className={`w-6 h-6 bg-white rounded-full transition-transform transform ${settings.audioCues ? 'translate-x-6' : 'translate-x-0'}`} />
-            </button>
-          </div>
-          <div className="flex justify-between items-center">
-            <label htmlFor="track-reps" className="font-medium">Track Reps In-Workout</label>
-            <button
-              id="track-reps"
-              role="switch"
-              aria-checked={settings.trackReps}
-              onClick={() => handleSettingChange('trackReps', !settings.trackReps)}
-              className={`w-14 h-8 rounded-full flex items-center p-1 transition-colors ${settings.trackReps ? 'bg-accent' : 'bg-gray-light'}`}
-            >
-              <span className={`w-6 h-6 bg-white rounded-full transition-transform transform ${settings.trackReps ? 'translate-x-6' : 'translate-x-0'}`} />
-            </button>
-          </div>
+            <ToggleSwitch label="Audio Cues" labelId="audio-cues" checked={settings.audioCues} onChange={() => handleSettingChange('audioCues', !settings.audioCues)} />
+            <ToggleSwitch label="Track Reps In-Workout" labelId="track-reps" checked={settings.trackReps} onChange={() => handleSettingChange('trackReps', !settings.trackReps)} />
+            <ToggleSwitch label="Enable Warm Up" labelId="enable-warmup" checked={settings.enableWarmup} onChange={() => handleSettingChange('enableWarmup', !settings.enableWarmup)} />
+            <ToggleSwitch label="Enable Cool Down" labelId="enable-cooldown" checked={settings.enableCooldown} onChange={() => handleSettingChange('enableCooldown', !settings.enableCooldown)} />
+            <ToggleSwitch label="Glass Filling Motion" labelId="enable-glass-motion" checked={settings.enableGlassMotion} onChange={() => handleSettingChange('enableGlassMotion', !settings.enableGlassMotion)} />
         </div>
       </div>
 
