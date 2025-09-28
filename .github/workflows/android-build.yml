@@ -27,7 +27,9 @@ jobs:
       - name: Generate Capacitor Android project
         run: |
           if [ ! -d android ]; then
+codex/create-yaml-workflow-for-apk-build-2025-09-28-140a03
             npx cap add android
+main
           fi
 
       - name: Synchronize Capacitor Android project
