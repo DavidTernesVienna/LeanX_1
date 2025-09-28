@@ -167,7 +167,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profile, progress,
             <ToggleSwitch label="Track Reps In-Workout" labelId="track-reps" checked={settings.trackReps} onChange={() => handleSettingChange('trackReps', !settings.trackReps)} />
             <ToggleSwitch label="Enable Warm Up" labelId="enable-warmup" checked={settings.enableWarmup} onChange={() => handleSettingChange('enableWarmup', !settings.enableWarmup)} />
             <ToggleSwitch label="Enable Cool Down" labelId="enable-cooldown" checked={settings.enableCooldown} onChange={() => handleSettingChange('enableCooldown', !settings.enableCooldown)} />
-            <ToggleSwitch label="Glass Filling Motion" labelId="enable-glass-motion" checked={settings.enableGlassMotion} onChange={() => handleSettingChange('enableGlassMotion', !settings.enableGlassMotion)} />
+            <ToggleSwitch label="Motion" labelId="enable-glass-motion" checked={settings.enableGlassMotion} onChange={() => handleSettingChange('enableGlassMotion', !settings.enableGlassMotion)} />
         </div>
       </div>
 

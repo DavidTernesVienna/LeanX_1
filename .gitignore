@@ -12,9 +12,6 @@ dist
 dist-ssr
 *.local
 
-# Native builds are generated during CI
-android/
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

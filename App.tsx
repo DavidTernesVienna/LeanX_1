@@ -12,7 +12,7 @@ import { RepTrackingScreen } from './components/RepTrackingScreen';
 import { ProfileScreen } from './components/ProfileScreen';
 import { TutorialScreen } from './components/TutorialScreen';
 import { ExerciseDetailModal } from './components/ExerciseDetailModal';
-import { UserIcon, BookIcon } from './components/icons';
+import { UserIcon, BookIcon, BackArrowIcon, HomeIcon } from './components/icons';
 
 const App: React.FC = () => {
     const [workouts, setWorkouts] = useState<Workout[]>(BUILT_IN_DATA);
@@ -133,7 +133,7 @@ const App: React.FC = () => {
             setView('home');
         } else if (view === 'repTracking') {
              setView('finished');
-        } else if (view === 'profile' || view === 'tutorial') {
+        } else if (view === 'profile' || view === 'tutorial' || view === 'chooseCycle') {
             setView('home');
         } else {
             setView('home');
@@ -142,6 +142,34 @@ const App: React.FC = () => {
 
     const handleSaveAndExitWorkout = () => {
         setView('home');
+    };
+
+    const BottomNavBar = () => {
+        const navItems = [
+            { view: 'home', icon: HomeIcon, label: 'Home' },
+            { view: 'tutorial', icon: BookIcon, label: 'Library' },
+            { view: 'profile', icon: UserIcon, label: 'Profile' },
+        ];
+
+        return (
+            <footer className="fixed bottom-0 left-0 right-0 bg-gray-dark border-t border-gray-light/50 z-20">
+                <nav className="flex justify-around items-center h-16">
+                    {navItems.map(item => (
+                        <button
+                            key={item.view}
+                            onClick={() => setView(item.view as AppView)}
+                            className={`flex flex-col items-center justify-center w-full h-full transition-colors ${
+                                view === item.view ? 'text-accent' : 'text-gray-text'
+                            }`}
+                            aria-label={item.label}
+                        >
+                            <item.icon className="w-7 h-7" />
+                            <span className="text-xs mt-1">{item.label}</span>
+                        </button>
+                    ))}
+                </nav>
+            </footer>
+        );
     };
 
     const renderView = () => {
@@ -188,6 +216,30 @@ const App: React.FC = () => {
                     onSelectExercise={setModalExercise}
                     onBack={handleBack}
                 />
+            case 'chooseCycle':
+                return (
+                    <div className="min-h-screen flex flex-col p-4">
+                        <header className="flex items-center mb-6">
+                            <button onClick={handleBack} className="p-2 -ml-2">
+                                <BackArrowIcon className="w-6 h-6" />
+                            </button>
+                            <h1 className="font-semibold text-xl mx-auto">Choose Workout</h1>
+                            <div className="w-6 h-6"></div>
+                        </header>
+                        <main className="flex-grow overflow-y-auto">
+                            <History
+                                workouts={workouts}
+                                progress={progress}
+                                onSelectWorkout={(index) => {
+                                    handleSelectWorkout(index);
+                                    setView('home');
+                                }}
+                                onUpdateProgress={handleUpdateProgress}
+                                selectedWorkoutIndex={selectedWorkoutIndex}
+                            />
+                        </main>
+                    </div>
+                );
             case 'home':
             default:
                 const uid = selectedWorkout
@@ -199,14 +251,6 @@ const App: React.FC = () => {
                     <div className="p-4 space-y-4">
                         <div className="flex justify-between items-center">
                             <h1 className="text-2xl font-bold">Lean Interval Timer</h1>
-                             <div className="flex items-center">
-                                <button onClick={() => setView('tutorial')} className="p-2 text-gray-text hover:text-off-white transition-colors">
-                                    <BookIcon className="w-6 h-6" />
-                                </button>
-                                <button onClick={() => setView('profile')} className="p-2 -mr-2 text-gray-text hover:text-off-white transition-colors">
-                                    <UserIcon className="w-6 h-6" />
-                                </button>
-                            </div>
                         </div>
 
                         {selectedWorkout && (
@@ -217,20 +261,23 @@ const App: React.FC = () => {
                             />
                         )}
                         
-                        <History
-                            workouts={workouts}
-                            progress={progress}
-                            onSelectWorkout={handleSelectWorkout}
-                            onUpdateProgress={handleUpdateProgress}
-                            selectedWorkoutIndex={selectedWorkoutIndex}
-                        />
+                        <div className="bg-gray-dark rounded-xl p-4">
+                            <button 
+                                onClick={() => setView('chooseCycle')} 
+                                className="w-full bg-gray-light text-off-white font-bold py-3 rounded-full text-lg transition-transform active:scale-95"
+                            >
+                                Choose Workout
+                            </button>
+                        </div>
                     </div>
                 );
         }
     };
 
+    const showNavBar = ['home', 'chooseCycle', 'tutorial', 'profile'].includes(view);
+
     return (
-        <main className="min-h-screen">
+        <main className={`min-h-screen ${showNavBar ? 'pb-24' : ''}`}>
             {renderView()}
             {modalExercise && (
                 <ExerciseDetailModal 
@@ -238,6 +285,7 @@ const App: React.FC = () => {
                     onClose={() => setModalExercise(null)}
                 />
             )}
+            {showNavBar && <BottomNavBar />}
         </main>
     );
 };

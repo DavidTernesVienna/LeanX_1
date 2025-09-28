@@ -16,22 +16,22 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import type { Workout, Exercise, WorkoutPhase, TimerSnapshot, Settings } from '../types';
 import * as ProgressService from '../services/progressService';
-import { BackArrowIcon, InfoIcon, PauseIcon, PlayIcon, NextIcon, PrevIcon, SettingsIcon } from './icons';
+import { BackArrowIcon, InfoIcon, PauseIcon, PlayIcon, NextIcon, PrevIcon, SettingsIcon, RestIcon } from './icons';
 import { Numpad } from './RepTrackingScreen';
 
 const BEEP_SOUND = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YUsAAAAAAP//AgAJAQIFAAcCAwAEAQIIAAEABgABAAQAAgABAAAAAAAAAAAA//8EAgQCAwIBAAcHAgQFAggHBQUGCAUEBAUEBgUFBgYFBQUFBAUEBQQFBAUDBAQDBAUDAgQCAwIEAQIEAgMDAwMDAwMBAwIBAgIBAQEBAAAAAAEBAAAAAAEBAAAAAAEBAAAAAAAAAAAAAAAAAAAAAAAAAAAA//8EAgQCAwIBAAcHAgQFAggHBQUGCAUEBAUEBgUFBgYFBQUFBAUEBQQFBAUDBAQDBAUDAgQCAwIEAQIEAgMDAwMDAwMBAwIBAgIBAQEBAAAAAAEBAAAAAAEBAAAAAAEBAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
 const PHASE_CHANGE_SOUND = new Audio('data:audio/wav;base64,UklGRkIAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YcwBAAAAAAABAwIFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w==');
 
 const PHASE_COLORS: Record<WorkoutPhase, string> = {
-  work: '#16a34a',      // green-600
-  rest: '#b45309',      // amber-700
-  warmup: '#2563eb',    // blue-600
-  warmup_rest: '#b45309', // amber-700
-  getready: '#475569',  // slate-600
-  getready_work: '#475569',
-  getready_cooldown: '#475569',
-  cooldown: '#22c55e',  // green-500
-  done: '#111827',      // gray-900
+  work: '#16a34a',          // green-600
+  rest: '#b45309',          // amber-700
+  warmup: '#16a34a',        // green-600 (was blue)
+  warmup_rest: '#b45309',   // amber-700
+  getready: '#475569',      // slate-600 (for Pre Warm Up)
+  getready_work: '#475569', // slate-600
+  getready_cooldown: '#475569', // slate-600
+  cooldown: '#16a34a',      // green-600 (was lighter green)
+  done: '#111827',          // gray-900
 };
 
 const PHASE_LABELS: Record<WorkoutPhase, string> = {
@@ -46,6 +46,19 @@ const PHASE_LABELS: Record<WorkoutPhase, string> = {
   done: 'Done',
 };
 
+const getPhaseTextColorClass = (phase: WorkoutPhase): string => {
+  switch (phase) {
+    case 'rest':
+    case 'warmup_rest':
+      return 'text-rest-yellow';
+    case 'getready':
+    case 'getready_work':
+    case 'getready_cooldown':
+      return 'text-slate-400';
+    default:
+      return 'text-accent';
+  }
+};
 
 const clamp = (v: number, min = 0, max = 1) => Math.min(max, Math.max(min, v));
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -66,7 +79,8 @@ const ProgressIndicator: React.FC<{
     currentExerciseIndex: number;
     warmupStage: number;
     cooldownStage: number;
-}> = ({ workout, rounds, phase, currentRound, currentExerciseIndex, warmupStage, cooldownStage }) => {
+    settings: Settings;
+}> = ({ workout, rounds, phase, currentRound, currentExerciseIndex, warmupStage, cooldownStage, settings }) => {
     
     const getStatus = (r: number, e: number): 'done' | 'active' | 'pending' => {
         if (phase === 'cooldown' || phase === 'done' || phase === 'getready_cooldown') return 'done';
@@ -104,26 +118,37 @@ const ProgressIndicator: React.FC<{
         return 'pending';
     };
 
-    return (
-        <div className="flex items-start justify-center gap-3 text-xs text-gray-text uppercase font-semibold w-full">
-            <div className="flex flex-col items-center gap-1">
-                <span>Warm Up</span>
-                 <div className="flex flex-col items-center gap-1 mt-1">
-                    <div className="flex gap-2">
-                        <Dot key="warmup-dot-0" status={getWarmupDotStatus(0)} />
-                    </div>
-                    <div className="flex gap-2">
-                        {[1, 2, 3].map(i => <Dot key={`warmup-dot-${i}`} status={getWarmupDotStatus(i)} />)}
-                    </div>
-                    <div className="flex gap-2">
-                        {[4, 5, 6].map(i => <Dot key={`warmup-dot-${i}`} status={getWarmupDotStatus(i)} />)}
-                    </div>
-                </div>
-            </div>
+    const ProgressArrow = () => (
+        <div className="flex items-center justify-center text-gray-text/70">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+            </svg>
+        </div>
+    );
 
-            <div className="flex-1 h-px bg-gray-light mt-2.5"></div>
+    return (
+        <div className="flex items-stretch justify-center gap-1 text-xs text-gray-text uppercase font-semibold w-full">
+            {settings.enableWarmup && (
+                <>
+                    <div className="flex flex-col items-center gap-1 bg-black/20 p-2 rounded-lg">
+                        <span>Warm Up</span>
+                         <div className="flex flex-col items-center gap-1 mt-1">
+                            <div className="flex gap-2">
+                                <Dot key="warmup-dot-0" status={getWarmupDotStatus(0)} />
+                            </div>
+                            <div className="flex gap-2">
+                                {[1, 2, 3].map(i => <Dot key={`warmup-dot-${i}`} status={getWarmupDotStatus(i)} />)}
+                            </div>
+                            <div className="flex gap-2">
+                                {[4, 5, 6].map(i => <Dot key={`warmup-dot-${i}`} status={getWarmupDotStatus(i)} />)}
+                            </div>
+                        </div>
+                    </div>
+                    <ProgressArrow />
+                </>
+            )}
             
-            <div className="flex flex-col items-center gap-1">
+            <div className="flex flex-col items-center gap-1 bg-black/20 p-2 rounded-lg">
                 <span>Work</span>
                 <div className="flex flex-col items-center gap-2 mt-1">
                     {Array.from({ length: rounds }).map((_, roundIndex) => (
@@ -136,13 +161,17 @@ const ProgressIndicator: React.FC<{
                 </div>
             </div>
 
-            <div className="flex-1 h-px bg-gray-light mt-2.5"></div>
-            <div className="flex flex-col items-center gap-1">
-                <span>Cool Down</span>
-                <div className="flex justify-center gap-2 mt-1">
-                    {[0, 1].map(i => <Dot key={`cooldown-dot-${i}`} status={getCooldownDotStatus(i)} />)}
-                </div>
-            </div>
+            {settings.enableCooldown && (
+                <>
+                    <ProgressArrow />
+                    <div className="flex flex-col items-center gap-1 bg-black/20 p-2 rounded-lg">
+                        <span>Cool Down</span>
+                        <div className="flex justify-center gap-2 mt-1">
+                            {[0, 1].map(i => <Dot key={`cooldown-dot-${i}`} status={getCooldownDotStatus(i)} />)}
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 };
@@ -250,12 +279,12 @@ const SettingsModal: React.FC<{
                     <ToggleSwitch label="Warm Up" labelId="warmup-toggle" checked={settings.enableWarmup} onChange={() => handleSettingChange('enableWarmup', !settings.enableWarmup)} />
                     <ToggleSwitch label="Cool Down" labelId="cooldown-toggle" checked={settings.enableCooldown} onChange={() => handleSettingChange('enableCooldown', !settings.enableCooldown)} />
                     <ToggleSwitch label="Audio Cues" labelId="audio-toggle" checked={settings.audioCues} onChange={() => handleSettingChange('audioCues', !settings.audioCues)} />
-                    <ToggleSwitch label="Glass Motion" labelId="motion-toggle" checked={settings.enableGlassMotion} onChange={() => handleSettingChange('enableGlassMotion', !settings.enableGlassMotion)} />
+                    <ToggleSwitch label="Motion" labelId="motion-toggle" checked={settings.enableGlassMotion} onChange={() => handleSettingChange('enableGlassMotion', !settings.enableGlassMotion)} />
                 </div>
                 <div className="space-y-3 pt-4 border-t border-gray-light">
-                     <button onClick={onSaveAndResume} className="w-full text-center bg-gray-light hover:bg-gray-light/70 text-off-white font-bold py-3 rounded-full transition-colors">Save & Resume</button>
-                    <HoldButton onConfirm={onReset} className="w-full text-center bg-gray-light hover:bg-gray-light/70 text-off-white font-bold py-3 rounded-full transition-colors">Reset Workout</HoldButton>
-                    <HoldButton onConfirm={onExit} className="w-full text-center bg-accent/80 hover:bg-accent/70 text-off-white font-bold py-3 rounded-full transition-colors">Exit Workout</HoldButton>
+                     <button onClick={onSaveAndResume} className="w-full text-center bg-green-700 hover:bg-green-800 text-off-white font-bold py-3 rounded-full transition-colors">Save & Resume</button>
+                    <HoldButton onConfirm={onReset} duration={500} className="w-full text-center bg-yellow-700 hover:bg-yellow-800 text-off-white font-bold py-3 rounded-full transition-colors">Reset Workout</HoldButton>
+                    <HoldButton onConfirm={onExit} duration={500} className="w-full text-center bg-red-800 hover:bg-red-900 text-off-white font-bold py-3 rounded-full transition-colors">Exit Workout</HoldButton>
                 </div>
             </div>
         </div>
@@ -286,6 +315,7 @@ export const WorkoutScreen: React.FC<{
     const [warmupStage, setWarmupStage] = useState(0);
     const [cooldownStage, setCooldownStage] = useState(0);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const wasRunningOnSettingsOpen = useRef(false);
     
     const [numpadVisible, setNumpadVisible] = useState(false);
     const [numpadExerciseIndex, setNumpadExerciseIndex] = useState<number | null>(null);
@@ -339,12 +369,12 @@ export const WorkoutScreen: React.FC<{
 
         switch (phase) {
             case 'getready':
-                title = "Pre Warm Up";
+                title = PHASE_LABELS.getready;
                 exercise = workout.preWarmUp;
                 break;
             case 'warmup':
             case 'warmup_rest':
-                title = warmupStage === 0 ? "Pre Warm Up" : workout.warmUp.name;
+                title = phase === 'warmup_rest' ? 'Rest' : 'Work';
                 exercise = warmupStage === 0 ? workout.preWarmUp : workout.warmUpExercises[(warmupStage - 1) % 3];
                 break;
             case 'getready_work':
@@ -361,7 +391,7 @@ export const WorkoutScreen: React.FC<{
                 exercise = workout.coolDown;
                 break;
             case 'cooldown':
-                title = "Cool Down";
+                title = "Work";
                 exercise = workout.coolDown;
                 break;
             case 'done':
@@ -371,6 +401,13 @@ export const WorkoutScreen: React.FC<{
         }
         return { headerTitle: title, displayExercise: exercise };
     }, [phase, exerciseIndex, warmupStage, workout]);
+
+    const titleFontSize = useMemo(() => {
+        const len = headerTitle.length;
+        if (len > 20) return 'text-2xl';
+        if (len > 14) return 'text-3xl';
+        return 'text-4xl';
+    }, [headerTitle]);
 
 
     const handlePhaseChange = useCallback((newPhase: WorkoutPhase) => {
@@ -595,7 +632,7 @@ export const WorkoutScreen: React.FC<{
                     className={`absolute inset-0 bg-background ${settings.enableGlassMotion ? 'transition-transform duration-200 ease-linear' : ''}`}
                     style={{
                         transformOrigin: 'top',
-                        transform: `scaleY(${phaseFillProgress})`,
+                        transform: settings.enableGlassMotion ? `scaleY(${phaseFillProgress})` : 'scaleY(0)',
                     }}
                 />
             </div>
@@ -605,26 +642,39 @@ export const WorkoutScreen: React.FC<{
                     <div className="w-10">
                         <button onClick={onBack} className="p-2 -ml-2"><BackArrowIcon className="w-6 h-6" /></button>
                     </div>
-                    <div className="flex-1 text-center">
-                        <span className="text-accent text-3xl font-bold uppercase tracking-widest animate-fade-in truncate" title={headerTitle}>{headerTitle}</span>
+                    <div className="flex-1 text-center min-w-0">
+                        <span className={`${getPhaseTextColorClass(phase)} ${titleFontSize} font-bold uppercase tracking-widest animate-fade-in truncate`} title={headerTitle}>{headerTitle}</span>
                     </div>
                     <div className="w-10">
-                         <button onClick={() => setIsSettingsOpen(true)} className="p-2"><SettingsIcon className="w-6 h-6" /></button>
+                         <button onClick={() => {
+                            wasRunningOnSettingsOpen.current = running;
+                            setRunning(false);
+                            setIsSettingsOpen(true);
+                         }} className="p-2"><SettingsIcon className="w-6 h-6" /></button>
                     </div>
                 </header>
 
                 <main className="flex-grow flex flex-col items-center justify-center space-y-4">
                     <div className="relative w-80 h-80 rounded-lg bg-gray-dark/50 flex items-center justify-center shadow-2xl">
-                       <img src={displayExercise.image} alt={displayExercise.name} className="w-full h-full object-cover rounded-lg"/>
-                       <div className="absolute top-0 left-1/2 -translate-x-1/2 translate-y-[-50%] bg-off-white/80 backdrop-blur-sm text-background font-bold text-lg rounded-full shadow-md max-w-[90%] flex items-center gap-2 pl-6 pr-2 py-2">
-                           <span className="truncate" title={displayExercise.name}>{displayExercise.name}</span>
-                           <button onClick={() => onShowExerciseInfo(displayExercise)} className="flex-shrink-0 w-7 h-7 flex items-center justify-center bg-black/10 rounded-full hover:bg-black/20 transition-colors" aria-label={`More info about ${displayExercise.name}`}>
-                                <InfoIcon className="w-5 h-5 text-gray-dark" />
-                           </button>
-                       </div>
+                       {(phase === 'rest' || phase === 'warmup_rest') ? (
+                            <div className="flex flex-col items-center justify-center text-rest-yellow opacity-80">
+                                <RestIcon className="w-32 h-32" />
+                                <span className="text-5xl font-bold uppercase tracking-widest mt-4">Rest</span>
+                            </div>
+                        ) : (
+                            <>
+                                <img src={displayExercise.image} alt={displayExercise.name} className="w-full h-full object-cover rounded-lg"/>
+                                <div className="absolute top-0 left-1/2 -translate-x-1/2 translate-y-[-50%] bg-off-white/80 backdrop-blur-sm text-background font-bold text-lg rounded-full shadow-md max-w-[90%] flex items-center gap-2 pl-6 pr-2 py-2">
+                                   <span className="truncate" title={displayExercise.name}>{displayExercise.name}</span>
+                                   <button onClick={() => onShowExerciseInfo(displayExercise)} className="flex-shrink-0 w-7 h-7 flex items-center justify-center bg-black/10 rounded-full hover:bg-black/20 transition-colors" aria-label={`More info about ${displayExercise.name}`}>
+                                        <InfoIcon className="w-5 h-5 text-gray-dark" />
+                                   </button>
+                                </div>
+                            </>
+                       )}
                     </div>
                     <div className="text-center">
-                         <div className="text-9xl font-mono font-bold" style={{textShadow: '0 2px 10px rgba(0,0,0,0.5)'}}>
+                         <div className="text-8xl font-mono font-bold" style={{textShadow: '0 2px 10px rgba(0,0,0,0.5)'}}>
                             {running ? formatTime(seconds) : 'Paused'}
                          </div>
                     </div>
@@ -632,7 +682,16 @@ export const WorkoutScreen: React.FC<{
 
                 <footer className="mt-auto flex flex-col items-center flex-shrink-0">
                     <div className="flex flex-col items-center justify-center w-full">
-                        <ProgressIndicator workout={workout} rounds={rounds} phase={phase} currentRound={round} currentExerciseIndex={exerciseIndex} warmupStage={warmupStage} cooldownStage={cooldownStage} />
+                        <ProgressIndicator 
+                            workout={workout} 
+                            rounds={rounds} 
+                            phase={phase} 
+                            currentRound={round} 
+                            currentExerciseIndex={exerciseIndex} 
+                            warmupStage={warmupStage} 
+                            cooldownStage={cooldownStage}
+                            settings={settings}
+                        />
                         <div className="flex items-center justify-center gap-8 mt-6">
                             <button onClick={() => changeExercise(-1)} disabled={!canGoPrev} className="p-4 text-off-white/80 rounded-full hover:bg-black/20 disabled:opacity-30 transition-colors">
                                 <PrevIcon className="w-8 h-8" />
@@ -667,8 +726,10 @@ export const WorkoutScreen: React.FC<{
                         setIsSettingsOpen(false);
                     }}
                     onSaveAndResume={() => {
-                        onSaveAndExit();
                         setIsSettingsOpen(false);
+                        if (wasRunningOnSettingsOpen.current) {
+                            setRunning(true);
+                        }
                     }}
                 />
             )}
