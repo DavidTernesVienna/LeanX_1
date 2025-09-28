@@ -31,7 +31,7 @@ export type Workout = Omit<RawWorkout, 'warmUp' | 'exercises' | 'coolDown' | 'ro
 };
 
 
-export type AppView = 'home' | 'workout' | 'finished' | 'repTracking' | 'profile' | 'tutorial' | 'chooseCycle';
+export type AppView = 'home' | 'workout' | 'finished' | 'repTracking' | 'profile' | 'tutorial' | 'chooseCycle' | 'settings';
 
 export interface Profile {
   name: string;

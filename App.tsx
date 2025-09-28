@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { BUILT_IN_DATA } from './constants';
 import * as ProgressService from './services/progressService';
@@ -11,8 +10,9 @@ import { FinishedScreen } from './components/FinishedScreen';
 import { RepTrackingScreen } from './components/RepTrackingScreen';
 import { ProfileScreen } from './components/ProfileScreen';
 import { TutorialScreen } from './components/TutorialScreen';
+import { SettingsScreen } from './components/SettingsScreen';
 import { ExerciseDetailModal } from './components/ExerciseDetailModal';
-import { UserIcon, BookIcon, BackArrowIcon, HomeIcon } from './components/icons';
+import { UserIcon, BookIcon, BackArrowIcon, HomeIcon, SettingsIcon } from './components/icons';
 
 const App: React.FC = () => {
     const [workouts, setWorkouts] = useState<Workout[]>(BUILT_IN_DATA);
@@ -133,7 +133,7 @@ const App: React.FC = () => {
             setView('home');
         } else if (view === 'repTracking') {
              setView('finished');
-        } else if (view === 'profile' || view === 'tutorial' || view === 'chooseCycle') {
+        } else if (view === 'profile' || view === 'tutorial' || view === 'chooseCycle' || view === 'settings') {
             setView('home');
         } else {
             setView('home');
@@ -149,6 +149,7 @@ const App: React.FC = () => {
             { view: 'home', icon: HomeIcon, label: 'Home' },
             { view: 'tutorial', icon: BookIcon, label: 'Library' },
             { view: 'profile', icon: UserIcon, label: 'Profile' },
+            { view: 'settings', icon: SettingsIcon, label: 'Settings' },
         ];
 
         return (
@@ -207,15 +208,19 @@ const App: React.FC = () => {
                     progress={progress} 
                     workouts={workouts} 
                     onSaveProfile={handleSaveProfile} 
-                    onBack={handleBack} 
-                    settings={settings}
-                    onUpdateSettings={handleUpdateSettings}
+                    onBack={handleBack}
                 />;
             case 'tutorial':
                 return <TutorialScreen
                     onSelectExercise={setModalExercise}
                     onBack={handleBack}
                 />
+            case 'settings':
+                return <SettingsScreen
+                    settings={settings}
+                    onUpdateSettings={handleUpdateSettings}
+                    onBack={handleBack}
+                />;
             case 'chooseCycle':
                 return (
                     <div className="min-h-screen flex flex-col p-4">
@@ -249,8 +254,8 @@ const App: React.FC = () => {
 
                 return (
                     <div className="p-4 space-y-4">
-                        <div className="flex justify-between items-center">
-                            <h1 className="text-2xl font-bold">Lean Interval Timer</h1>
+                        <div className="flex justify-center items-center">
+                            <h1 className="text-4xl font-bold">LeanX</h1>
                         </div>
 
                         {selectedWorkout && (
@@ -274,7 +279,7 @@ const App: React.FC = () => {
         }
     };
 
-    const showNavBar = ['home', 'chooseCycle', 'tutorial', 'profile'].includes(view);
+    const showNavBar = ['home', 'chooseCycle', 'tutorial', 'profile', 'settings'].includes(view);
 
     return (
         <main className={`min-h-screen ${showNavBar ? 'pb-24' : ''}`}>

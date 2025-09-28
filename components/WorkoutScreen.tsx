@@ -1,3 +1,4 @@
+
 /**
  * WorkoutScreen Component Update
  *
@@ -35,7 +36,7 @@ const PHASE_COLORS: Record<WorkoutPhase, string> = {
 };
 
 const PHASE_LABELS: Record<WorkoutPhase, string> = {
-  getready: 'Pre Warm Up',
+  getready: 'Get Ready',
   warmup: 'Warm Up',
   warmup_rest: 'Rest',
   getready_work: 'Get Ready',
