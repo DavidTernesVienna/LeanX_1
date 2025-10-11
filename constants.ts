@@ -1,11 +1,10 @@
 import type { RawWorkout, Workout, Exercise } from './types';
 import { parseTiming, assertWorkout } from './timing';
-
-const slugify = (text: string) => text.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
+import { getImageForExercise } from './services/exerciseImageService';
 
 const createExercise = (name: string): Exercise => ({
   name,
-  image: `https://picsum.photos/seed/${slugify(name)}/400/400`,
+  image: getImageForExercise(name),
   description: [
     'Maintain a straight back and engaged core.',
     'Focus on controlled, deliberate movements.',
@@ -100,7 +99,7 @@ const WORKOUT_NAMES: RawWorkout[] = [
   { cycle: "Advanced", week: "Week 5", day: "Tuesday",   preWarmUp: "Jumping Jacks", timing: "50/10", warmUp: "Side Lying Warm Up", exercises: ["T-arm Reach","Straight Leg Bridge","RDL to Squat"], coolDown: "Straddle Reach" },
   { cycle: "Advanced", week: "Week 5", day: "Wednesday", preWarmUp: "Jumping Jacks", timing: "50/10", warmUp: "Side Lying Warm Up", exercises: ["Y Cuff","High-Knee Skip","Dive Bomber"], coolDown: "Iso Pigeon Stretch" },
   { cycle: "Advanced", week: "Week 5", day: "Thursday",  preWarmUp: "Jumping Jacks", timing: "50/10", warmUp: "Side Lying Warm Up", exercises: ["Straight Leg Crunch","Straight Leg Bridge","Jump Thrust"], coolDown: "Hip Rolls" },
-  { cycle: "Advanced", week: "Week 5", day: "Friday",    preWarmUp: "Jumping Jacks", timing: "50/10", warmUp: "Side Lying Warm Up", exercises: ["Hight Drop","Tripod Let Me Ups","Side to Side Cossack"], coolDown: "Spiderman A-Frames" },
+  { cycle: "Advanced", week: "Week 5", day: "Friday",    preWarmUp: "Jumping Jacks", timing: "50/10", warmUp: "Side Lying Warm Up", exercises: ["High Drop","Tripod Let Me Ups","Side to Side Cossack"], coolDown: "Spiderman A-Frames" },
 
   { cycle: "Advanced", week: "Week 6", day: "Monday",    preWarmUp: "Standing March", timing: "50/10", warmUp: "Crawling Warm Up", exercises: ["Dive Bomber","Straight Leg Crunch","Jump Thrust"], coolDown: "Spiderman Arm Circles" },
   { cycle: "Advanced", week: "Week 6", day: "Tuesday",   preWarmUp: "Standing March", timing: "50/10", warmUp: "Crawling Warm Up", exercises: ["Parallel Leg Bridge","High Kick","High-Knee Skip"], coolDown: "Bloomers" },
@@ -108,40 +107,40 @@ const WORKOUT_NAMES: RawWorkout[] = [
   { cycle: "Advanced", week: "Week 6", day: "Thursday",  preWarmUp: "Standing March", timing: "50/10", warmUp: "Crawling Warm Up", exercises: ["T-arm Reach","Double Drop","Squat to RDL"], coolDown: "Iso Pigeon Stretch" },
   { cycle: "Advanced", week: "Week 6", day: "Friday",    preWarmUp: "Standing March", timing: "50/10", warmUp: "Crawling Warm Up", exercises: ["Y Cuff","Low Drop","Squat Thrust"], coolDown: "Hip Rolls" },
 
-  { cycle: "Expert", week: "Week 1", day: "Monday",    preWarmUp: "Standing March", timing: "60/0",  warmUp: "Side Lying Warm Up", exercises: ["Starfish Drop","Let Me Ups","T-arm Squat"], coolDown: "Spiderman A-Frames" },
+  { cycle: "Expert", week: "Week 1", day: "Monday",    preWarmUp: "Standing March", timing: "55/5",  warmUp: "Side Lying Warm Up", exercises: ["Starfish Drop","Let Me Ups","T-arm Squat"], coolDown: "Spiderman A-Frames" },
   { cycle: "Expert", week: "Week 1", day: "Tuesday",   preWarmUp: "Standing March", timing: "40/20", warmUp: "Crawling Warm Up",  exercises: ["Straight Leg Bridge","High Kick","Stork Stance"], coolDown: "Spiderman Arm Circles" },
-  { cycle: "Expert", week: "Week 1", day: "Wednesday", preWarmUp: "Standing March", timing: "60/0",  warmUp: "Side Lying Warm Up", exercises: ["Double Drop","Alternating Grip Pull Ups","Side to Side Cossack"], coolDown: "Bloomers" },
+  { cycle: "Expert", week: "Week 1", day: "Wednesday", preWarmUp: "Standing March", timing: "55/5",  warmUp: "Side Lying Warm Up", exercises: ["Double Drop","Alternating Grip Pull Ups","Side to Side Cossack"], coolDown: "Bloomers" },
   { cycle: "Expert", week: "Week 1", day: "Thursday",  preWarmUp: "Standing March", timing: "40/20", warmUp: "Crawling Warm Up",  exercises: ["Bent Leg Bridge","Arm Haulers","High-Knee March"], coolDown: "Straddle Reach" },
-  { cycle: "Expert", week: "Week 1", day: "Friday",    preWarmUp: "Standing March", timing: "60/0",  warmUp: "Side Lying Warm Up", exercises: ["Dive Bomber","Let Me Ins","T-arm Squat"], coolDown: "Iso Pigeon Stretch" },
+  { cycle: "Expert", week: "Week 1", day: "Friday",    preWarmUp: "Standing March", timing: "55/5",  warmUp: "Side Lying Warm Up", exercises: ["Dive Bomber","Let Me Ins","T-arm Squat"], coolDown: "Iso Pigeon Stretch" },
 
   { cycle: "Expert", week: "Week 2", day: "Monday",    preWarmUp: "Jumping Jacks", timing: "40/20", warmUp: "Crawling Warm Up",  exercises: ["Straight Leg Crunch","Starfish Twist","High-Knee Run"], coolDown: "Hip Rolls" },
-  { cycle: "Expert", week: "Week 2", day: "Tuesday",   preWarmUp: "Jumping Jacks", timing: "40/20", warmUp: "Side Lying Warm Up", exercises: ["Dive Bomber","Alternating Grip Pull Ups","Streamline Bulgarien SS"], coolDown: "Spiderman A-Frames" },
-  { cycle: "Expert", week: "Week 2", day: "Wednesday", preWarmUp: "Jumping Jacks", timing: "60/0",  warmUp: "Crawling Warm Up",  exercises: ["Bent Leg Bridge","Low Drop","High-Knee Skip"], coolDown: "Spiderman Arm Circles" },
-  { cycle: "Expert", week: "Week 2", day: "Thursday",  preWarmUp: "Jumping Jacks", timing: "60/0",  warmUp: "Side Lying Warm Up", exercises: ["Double Fun Glide","Tripod Let Me Ups","Streamline RDL"], coolDown: "Bloomers" },
+  { cycle: "Expert", week: "Week 2", day: "Tuesday",   preWarmUp: "Jumping Jacks", timing: "40/20", warmUp: "Side Lying Warm Up", exercises: ["Dive Bomber","Alternating Grip Pull Ups","Streamline Bulgarien Split Squats"], coolDown: "Spiderman A-Frames" },
+  { cycle: "Expert", week: "Week 2", day: "Wednesday", preWarmUp: "Jumping Jacks", timing: "55/5",  warmUp: "Crawling Warm Up",  exercises: ["Bent Leg Bridge","Low Drop","High-Knee Skip"], coolDown: "Spiderman Arm Circles" },
+  { cycle: "Expert", week: "Week 2", day: "Thursday",  preWarmUp: "Jumping Jacks", timing: "55/5",  warmUp: "Side Lying Warm Up", exercises: ["Double Fun Glide","Tripod Let Me Ups","Streamline RDL"], coolDown: "Bloomers" },
   { cycle: "Expert", week: "Week 2", day: "Friday",    preWarmUp: "Jumping Jacks", timing: "40/20", warmUp: "Crawling Warm Up",  exercises: ["T-arm Reach","Straight Leg Bridge","Parallel Leg Crunch"], coolDown: "Straddle Reach" },
 
-  { cycle: "Expert", week: "Week 3", day: "Monday",    preWarmUp: "Standing March", timing: "60/0",  warmUp: "Side Lying Warm Up", exercises: ["Tripod Press","Let Me Ins","RDL to Squat"], coolDown: "Iso Pigeon Stretch" },
+  { cycle: "Expert", week: "Week 3", day: "Monday",    preWarmUp: "Standing March", timing: "55/5",  warmUp: "Side Lying Warm Up", exercises: ["Tripod Press","Let Me Ins","RDL to Squat"], coolDown: "Iso Pigeon Stretch" },
   { cycle: "Expert", week: "Week 3", day: "Tuesday",   preWarmUp: "Standing March", timing: "45/15", warmUp: "Crawling Warm Up",  exercises: ["Bent Leg Bridge","High Drop","Side Squat"], coolDown: "Hip Rolls" },
-  { cycle: "Expert", week: "Week 3", day: "Wednesday", preWarmUp: "Standing March", timing: "60/0",  warmUp: "Side Lying Warm Up", exercises: ["Side Kick","Alternating Grip Pull Ups","Streamline Bulgarien SS"], coolDown: "Spiderman A-Frames" },
+  { cycle: "Expert", week: "Week 3", day: "Wednesday", preWarmUp: "Standing March", timing: "55/5",  warmUp: "Side Lying Warm Up", exercises: ["Side Kick","Alternating Grip Pull Ups","Streamline Bulgarien Split Squats"], coolDown: "Spiderman A-Frames" },
   { cycle: "Expert", week: "Week 3", day: "Thursday",  preWarmUp: "Standing March", timing: "45/15", warmUp: "Crawling Warm Up",  exercises: ["Low Drop","High-Knee March","Stork Stance"], coolDown: "Spiderman Arm Circles" },
-  { cycle: "Expert", week: "Week 3", day: "Friday",    preWarmUp: "Standing March", timing: "60/0",  warmUp: "Side Lying Warm Up", exercises: ["Double Fun Glide","Let Me Ups","Bottom Squat"], coolDown: "Bloomers" },
+  { cycle: "Expert", week: "Week 3", day: "Friday",    preWarmUp: "Standing March", timing: "55/5",  warmUp: "Side Lying Warm Up", exercises: ["Double Fun Glide","Let Me Ups","Bottom Squat"], coolDown: "Bloomers" },
 
   { cycle: "Expert", week: "Week 4", day: "Monday",    preWarmUp: "Jumping Jacks", timing: "45/15", warmUp: "Crawling Warm Up",  exercises: ["T-arm Reach","Kickout","High-Knee Skip"], coolDown: "Straddle Reach" },
-  { cycle: "Expert", week: "Week 4", day: "Tuesday",   preWarmUp: "Jumping Jacks", timing: "60/0",  warmUp: "Side Lying Warm Up", exercises: ["Tripod Press","Tripod Let Me Ups","Side to Side Cossack"], coolDown: "Iso Pigeon Stretch" },
+  { cycle: "Expert", week: "Week 4", day: "Tuesday",   preWarmUp: "Jumping Jacks", timing: "55/5",  warmUp: "Side Lying Warm Up", exercises: ["Tripod Press","Tripod Let Me Ups","Side to Side Cossack"], coolDown: "Iso Pigeon Stretch" },
   { cycle: "Expert", week: "Week 4", day: "Wednesday", preWarmUp: "Jumping Jacks", timing: "45/15", warmUp: "Crawling Warm Up",  exercises: ["Parallel Leg Crunch","High-Knee March","Streamline RDL"], coolDown: "Hip Rolls" },
-  { cycle: "Expert", week: "Week 4", day: "Thursday",  preWarmUp: "Jumping Jacks", timing: "60/0",  warmUp: "Crawling Warm Up",  exercises: ["Double Fun Glide","Alternating Grip Pull Ups","Squat to RDL"], coolDown: "Spiderman A-Frames" },
+  { cycle: "Expert", week: "Week 4", day: "Thursday",  preWarmUp: "Jumping Jacks", timing: "55/5",  warmUp: "Crawling Warm Up",  exercises: ["Double Fun Glide","Alternating Grip Pull Ups","Squat to RDL"], coolDown: "Spiderman A-Frames" },
   { cycle: "Expert", week: "Week 4", day: "Friday",    preWarmUp: "Jumping Jacks", timing: "45/15", warmUp: "Crawling Warm Up",  exercises: ["Double Drop","High-Knee Run","Jump Thrust"], coolDown: "Spiderman Arm Circles" },
 
-  { cycle: "Expert", week: "Week 5", day: "Monday",    preWarmUp: "Standing March", timing: "60/0",  warmUp: "Side Lying Warm Up", exercises: ["Starfish Bounce","Tripod Let Me Ups","Side Squat"], coolDown: "Bloomers" },
+  { cycle: "Expert", week: "Week 5", day: "Monday",    preWarmUp: "Standing March", timing: "55/5",  warmUp: "Side Lying Warm Up", exercises: ["Starfish Bounce","Tripod Let Me Ups","Side Squat"], coolDown: "Bloomers" },
   { cycle: "Expert", week: "Week 5", day: "Tuesday",   preWarmUp: "Standing March", timing: "50/10", warmUp: "Crawling Warm Up",  exercises: ["Bent Leg Crunch","Side Kick","RDL to Squat"], coolDown: "Straddle Reach" },
-  { cycle: "Expert", week: "Week 5", day: "Wednesday", preWarmUp: "Standing March", timing: "60/0",  warmUp: "Side Lying Warm Up", exercises: ["Dive Bomber","Alternating Grip Pull Ups","Streamline Bulgarien SS"], coolDown: "Iso Pigeon Stretch" },
+  { cycle: "Expert", week: "Week 5", day: "Wednesday", preWarmUp: "Standing March", timing: "55/5",  warmUp: "Side Lying Warm Up", exercises: ["Dive Bomber","Alternating Grip Pull Ups","Streamline Bulgarien Split Squats"], coolDown: "Iso Pigeon Stretch" },
   { cycle: "Expert", week: "Week 5", day: "Thursday",  preWarmUp: "Standing March", timing: "50/10", warmUp: "Crawling Warm Up",  exercises: ["Straight Leg Crunch","High-Knee Skip","Drop Thrust"], coolDown: "Hip Rolls" },
-  { cycle: "Expert", week: "Week 5", day: "Friday",    preWarmUp: "Standing March", timing: "60/0",  warmUp: "Side Lying Warm Up", exercises: ["Tripod Press","Let Me Ins","Side to Side Cossack"], coolDown: "Spiderman A-Frames" },
+  { cycle: "Expert", week: "Week 5", day: "Friday",    preWarmUp: "Standing March", timing: "55/5",  warmUp: "Side Lying Warm Up", exercises: ["Tripod Press","Let Me Ins","Side to Side Cossack"], coolDown: "Spiderman A-Frames" },
 
   { cycle: "Expert", week: "Week 6", day: "Monday",    preWarmUp: "Jumping Jacks", timing: "50/10", warmUp: "Crawling Warm Up",  exercises: ["Y Cuff","Bent Leg Crunch","T-arm Squat"], coolDown: "Spiderman Arm Circles" },
-  { cycle: "Expert", week: "Week 6", day: "Tuesday",   preWarmUp: "Jumping Jacks", timing: "60/0",  warmUp: "Side Lying Warm Up", exercises: ["Tripod Press","Alternating Grip Pull Ups","Stork Stance"], coolDown: "Bloomers" },
+  { cycle: "Expert", week: "Week 6", day: "Tuesday",   preWarmUp: "Jumping Jacks", timing: "55/5",  warmUp: "Side Lying Warm Up", exercises: ["Tripod Press","Alternating Grip Pull Ups","Stork Stance"], coolDown: "Bloomers" },
   { cycle: "Expert", week: "Week 6", day: "Wednesday", preWarmUp: "Jumping Jacks", timing: "50/10", warmUp: "Crawling Warm Up",  exercises: ["T-arm Reach","High-Knee Skip","RDL to Squat"], coolDown: "Straddle Reach" },
-  { cycle: "Expert", week: "Week 6", day: "Thursday",  preWarmUp: "Jumping Jacks", timing: "60/0",  warmUp: "Side Lying Warm Up", exercises: ["Double Fun Glide","Let Me Ups","Streamline RDL"], coolDown: "Iso Pigeon Stretch" },
+  { cycle: "Expert", week: "Week 6", day: "Thursday",  preWarmUp: "Jumping Jacks", timing: "55/5",  warmUp: "Side Lying Warm Up", exercises: ["Double Fun Glide","Let Me Ups","Streamline RDL"], coolDown: "Iso Pigeon Stretch" },
   { cycle: "Expert", week: "Week 6", day: "Friday",    preWarmUp: "Jumping Jacks", timing: "50/10", warmUp: "Crawling Warm Up",  exercises: ["Arm Haulers","Side Kick","Squat to RDL"], coolDown: "Hip Rolls" },
 ];
 

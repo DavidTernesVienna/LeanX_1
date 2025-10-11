@@ -6,7 +6,7 @@ interface RepTrackingScreenProps {
   workout: Workout;
   onSaveReps: (reps: number[]) => void;
   onBack: () => void;
-  initialReps?: (number | null)[];
+  initialReps?: number[];
 }
 
 export const Numpad: React.FC<{
@@ -93,7 +93,7 @@ export const RepTrackingScreen: React.FC<RepTrackingScreenProps> = ({ workout, o
      const initial = Array(exercisesToTrack.length).fill('');
     if (initialReps) {
       initialReps.forEach((r, i) => {
-        if (r !== null && r >= 0) {
+        if (r > 0) {
           initial[i] = String(r);
         }
       });

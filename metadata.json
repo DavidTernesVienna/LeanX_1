@@ -1,5 +1,7 @@
 {
   "name": "LeanX",
   "description": "A responsive and feature-rich interval timer for workouts, built with React and Tailwind CSS. It supports customizable cycles, progress tracking, and integrated music playback.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "camera"
+  ]
 }

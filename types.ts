@@ -31,10 +31,11 @@ export type Workout = Omit<RawWorkout, 'warmUp' | 'exercises' | 'coolDown' | 'ro
 };
 
 
-export type AppView = 'home' | 'workout' | 'finished' | 'repTracking' | 'profile' | 'tutorial' | 'chooseCycle' | 'settings';
+export type AppView = 'home' | 'workout' | 'finished' | 'repTracking' | 'profile' | 'tutorial' | 'chooseCycle' | 'settings' | 'welcome' | 'getStarted' | 'camera' | 'imageCropper';
 
 export interface Profile {
   name: string;
+  picture?: string;
 }
 
 export interface Settings {
@@ -43,6 +44,9 @@ export interface Settings {
   enableWarmup: boolean;
   enableCooldown: boolean;
   enableGlassMotion: boolean;
+  pauseOnRepCount: boolean;
+  enableColor: boolean;
+  enableWakeLock: boolean;
 }
 
 // --- Types for progress tracking ---
@@ -80,7 +84,7 @@ export interface TimerSnapshot {
   round: number;
   exerciseIndex: number;
   seconds: number;
-  sessionReps?: (number | null)[];
+  sessionReps?: (number | null)[][];
   warmupStage?: number;
   cooldownStage?: number;
 }

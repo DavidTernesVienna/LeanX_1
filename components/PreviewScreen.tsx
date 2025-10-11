@@ -22,27 +22,36 @@ export const PreviewScreen: React.FC<{
                 </div>
             </div>
 
-            <div className="space-y-4 text-off-white/80 pt-4 border-t border-gray-light/50 px-4">
-                <div className="flex items-center gap-4">
-                    <img src={workout.warmUp.image} alt={workout.warmUp.name} className="w-12 h-12 rounded-md object-cover bg-gray-light flex-shrink-0" />
-                    <div>
-                        <p className="font-semibold text-gray-text">Warm Up</p>
-                        <p className="text-off-white text-lg">{workout.warmUp.name}</p>
+            <div className="space-y-3 pt-4 border-t border-gray-light/50">
+                {/* Warm Up Section */}
+                <div className="bg-black/20 p-3 rounded-lg">
+                    <div className="flex items-center gap-4">
+                        <img src={workout.warmUp.image} alt={workout.warmUp.name} className="w-12 h-12 rounded-md object-cover bg-gray-light flex-shrink-0" />
+                        <div>
+                            <p className="font-semibold text-gray-text">Warm Up</p>
+                            <p className="text-off-white text-lg">{workout.warmUp.name}</p>
+                        </div>
                     </div>
                 </div>
 
-                {workout.exercises.map((ex, i) => (
-                    <div key={i} className="flex items-center gap-4 pl-8">
-                        <img src={ex.image} alt={ex.name} className="w-12 h-12 rounded-md object-cover bg-gray-light flex-shrink-0" />
-                        <p className="text-lg">{ex.name}</p>
-                    </div>
-                ))}
+                {/* Work Section */}
+                <div className="bg-black/20 p-3 rounded-lg space-y-3">
+                    {workout.exercises.map((ex, i) => (
+                        <div key={i} className="flex items-center gap-4">
+                            <img src={ex.image} alt={ex.name} className="w-12 h-12 rounded-md object-cover bg-gray-light flex-shrink-0" />
+                            <p className="text-lg">{ex.name}</p>
+                        </div>
+                    ))}
+                </div>
                 
-                <div className="flex items-center gap-4">
-                    <img src={workout.coolDown.image} alt={workout.coolDown.name} className="w-12 h-12 rounded-md object-cover bg-gray-light flex-shrink-0" />
-                    <div>
-                        <p className="font-semibold text-gray-text">Cool Down</p>
-                        <p className="text-off-white text-lg">{workout.coolDown.name}</p>
+                {/* Cool Down Section */}
+                <div className="bg-black/20 p-3 rounded-lg">
+                    <div className="flex items-center gap-4">
+                        <img src={workout.coolDown.image} alt={workout.coolDown.name} className="w-12 h-12 rounded-md object-cover bg-gray-light flex-shrink-0" />
+                        <div>
+                            <p className="font-semibold text-gray-text">Cool Down</p>
+                            <p className="text-off-white text-lg">{workout.coolDown.name}</p>
+                        </div>
                     </div>
                 </div>
             </div>

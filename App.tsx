@@ -13,32 +13,73 @@ import { TutorialScreen } from './components/TutorialScreen';
 import { SettingsScreen } from './components/SettingsScreen';
 import { ExerciseDetailModal } from './components/ExerciseDetailModal';
 import { UserIcon, BookIcon, BackArrowIcon, HomeIcon, SettingsIcon } from './components/icons';
+import { CameraView } from './components/CameraView';
+import { ImageCropper } from './components/ImageCropper';
 
 const App: React.FC = () => {
     const [workouts, setWorkouts] = useState<Workout[]>(BUILT_IN_DATA);
     const [progress, setProgress] = useState<Progress>(() => ProgressService.loadProgress());
     const [profile, setProfile] = useState<Profile | null>(() => ProgressService.loadProfile());
     const [settings, setSettings] = useState<Settings>(() => ProgressService.loadSettings());
-    const [sessionReps, setSessionReps] = useState<(number | null)[]>([]);
-    const [view, setView] = useState<AppView>('home');
+    const [sessionReps, setSessionReps] = useState<(number | null)[][]>([]);
+    const [view, setView] = useState<AppView>(() => ProgressService.loadProfile() ? 'home' : 'welcome');
     const [selectedWorkoutIndex, setSelectedWorkoutIndex] = useState<number | null>(null);
     const [modalExercise, setModalExercise] = useState<Exercise | null>(null);
+    const [newProfileName, setNewProfileName] = useState('');
+    const [newProfilePicture, setNewProfilePicture] = useState<string | null>(null);
+    const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+    const [returnToView, setReturnToView] = useState<AppView>('home');
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const isInitialLoad = useRef(true);
+    const [isWakeLockSupported, setIsWakeLockSupported] = useState(true);
 
     const selectedWorkout = selectedWorkoutIndex !== null ? workouts[selectedWorkoutIndex] : null;
 
     useEffect(() => {
+        const checkWakeLockSupport = async () => {
+            let supported = false;
+            if ('wakeLock' in navigator && 'permissions' in navigator) {
+                try {
+                    const status = await navigator.permissions.query({ name: 'screen-wake-lock' as any });
+                    if (status.state !== 'denied') {
+                        supported = true;
+                    }
+                } catch (e) {
+                    console.warn('Could not query screen-wake-lock permission, assuming not supported.', e);
+                    supported = false;
+                }
+            } else {
+                supported = false;
+            }
+            
+            setIsWakeLockSupported(supported);
+            
+            if (!supported) {
+                setSettings(currentSettings => {
+                    if (currentSettings.enableWakeLock) {
+                        const newSettings = { ...currentSettings, enableWakeLock: false };
+                        ProgressService.saveSettings(newSettings);
+                        return newSettings;
+                    }
+                    return currentSettings;
+                });
+            }
+        };
+        checkWakeLockSupport();
+    }, []);
+
+    useEffect(() => {
+        if (!ProgressService.loadProfile()) return;
+
         if (!isInitialLoad.current || workouts.length === 0) return;
         
         isInitialLoad.current = false;
 
         let resumeWorkoutIndex = -1;
         const progressWithKeys = Object.entries(progress);
-        // FIX: Cast `p` to `ProgressItem` to access its properties, as `Object.entries` may return `[string, unknown]`.
         const inProgressEntry = progressWithKeys.find(([,p]) => (p as ProgressItem).inProgress && (p as ProgressItem).snap);
 
         if (inProgressEntry) {
-            // FIX: Cast `inProgressEntry[1]` to `ProgressItem` to access its properties.
             const workoutIdToResume = (inProgressEntry[1] as ProgressItem).snap?.workoutId;
             if (workoutIdToResume) {
                 const foundIndex = workouts.findIndex(w => w.id === workoutIdToResume);
@@ -57,7 +98,6 @@ const App: React.FC = () => {
         } else {
             const firstNotDone = workouts.findIndex((w) => !progress[ProgressService.getWorkoutUID(w)]?.done);
             setSelectedWorkoutIndex(firstNotDone >= 0 ? firstNotDone : 0);
-            setView('home');
         }
     }, [workouts, progress]);
 
@@ -71,7 +111,8 @@ const App: React.FC = () => {
     
     const handleStartWorkout = () => {
         if (selectedWorkout) {
-            setSessionReps(Array(selectedWorkout.exercises.length).fill(null));
+            const repsForWorkout = Array(selectedWorkout.exercises.length).fill(0).map(() => Array(selectedWorkout.rounds).fill(null));
+            setSessionReps(repsForWorkout);
             setView('workout');
         }
     };
@@ -94,7 +135,6 @@ const App: React.FC = () => {
             const nextIndex = (selectedWorkoutIndex + 1) % workouts.length;
             setSelectedWorkoutIndex(nextIndex);
         } else {
-            // Fallback if index is somehow lost: find first not done.
             const firstNotDone = workouts.findIndex((w) => !progress[ProgressService.getWorkoutUID(w)]?.done);
             setSelectedWorkoutIndex(firstNotDone >= 0 ? firstNotDone : 0);
         }
@@ -114,10 +154,40 @@ const App: React.FC = () => {
         handleReturnToHomeWithNextWorkout();
     };
     
-    const handleSaveProfile = (name: string) => {
-        const newProfile = { name };
-        ProgressService.saveProfile(newProfile);
-        setProfile(newProfile);
+    const handleImageSelected = (dataUrl: string) => {
+        setImageToCrop(dataUrl);
+        setView('imageCropper');
+    };
+
+    const handleCropComplete = (croppedDataUrl: string | null) => {
+        if (croppedDataUrl) {
+            if (returnToView === 'profile' && profile) {
+                const updatedProfile = { ...profile, picture: croppedDataUrl };
+                setProfile(updatedProfile);
+                ProgressService.saveProfile(updatedProfile);
+            } else {
+                setNewProfilePicture(croppedDataUrl);
+            }
+        }
+        setView(returnToView);
+        setImageToCrop(null);
+    };
+
+    const handleCreateProfile = () => {
+        if (newProfileName.trim()) {
+            const newProfile: Profile = { 
+                name: newProfileName.trim(),
+                ...(newProfilePicture && { picture: newProfilePicture })
+            };
+            ProgressService.saveProfile(newProfile);
+            setProfile(newProfile);
+            setView('getStarted');
+        }
+    };
+    
+    const handleUpdateProfile = (updatedProfile: Profile) => {
+        setProfile(updatedProfile);
+        ProgressService.saveProfile(updatedProfile);
     };
 
     const handleUpdateSettings = (newSettings: Settings) => {
@@ -133,8 +203,8 @@ const App: React.FC = () => {
             setView('home');
         } else if (view === 'repTracking') {
              setView('finished');
-        } else if (view === 'profile' || view === 'tutorial' || view === 'chooseCycle' || view === 'settings') {
-            setView('home');
+        } else if (['profile', 'tutorial', 'chooseCycle', 'settings', 'camera', 'imageCropper'].includes(view)) {
+            setView(view === 'camera' || view === 'imageCropper' ? returnToView : 'home');
         } else {
             setView('home');
         }
@@ -175,6 +245,97 @@ const App: React.FC = () => {
 
     const renderView = () => {
         switch (view) {
+            case 'welcome':
+                return (
+                    <div className="min-h-screen flex flex-col p-4 text-center">
+                        <header className="py-4">
+                            <h1 className="text-4xl font-bold">LeanX</h1>
+                        </header>
+                        <main className="flex-grow flex flex-col items-center justify-center space-y-4">
+                            <p className="text-gray-text">Set up your profile to get started.</p>
+                            
+                            <div className="relative w-full max-w-xs aspect-square rounded-2xl bg-gray-dark flex items-center justify-center mb-4">
+                                {newProfilePicture ? (
+                                    <img src={newProfilePicture} alt="Profile preview" className="w-full h-full rounded-2xl object-cover" />
+                                ) : (
+                                    <UserIcon className="w-20 h-20 text-gray-light" />
+                                )}
+                            </div>
+
+                            <div className="flex gap-4 w-full max-w-xs">
+                                <button
+                                    onClick={() => { setReturnToView('welcome'); setView('camera'); }}
+                                    className="flex-1 bg-gray-light text-off-white font-semibold py-2 px-4 rounded-xl text-sm"
+                                >
+                                    Take Photo
+                                </button>
+                                <button
+                                    onClick={() => { setReturnToView('welcome'); fileInputRef.current?.click(); }}
+                                    className="flex-1 bg-gray-light text-off-white font-semibold py-2 px-4 rounded-xl text-sm"
+                                >
+                                    From Gallery
+                                </button>
+                            </div>
+                           
+                            <input
+                                type="text"
+                                placeholder="Your Name"
+                                value={newProfileName}
+                                onChange={(e) => setNewProfileName(e.target.value)}
+                                onKeyPress={(e) => e.key === 'Enter' && handleCreateProfile()}
+                                className="w-full max-w-xs bg-gray-dark text-off-white text-center p-3 rounded-md border border-gray-light"
+                            />
+                            <button
+                                onClick={handleCreateProfile}
+                                className="w-full max-w-xs bg-accent text-off-white font-bold py-3 rounded-full text-lg transition-transform active:scale-95"
+                            >
+                                Set Profile
+                            </button>
+                        </main>
+                    </div>
+                );
+            case 'getStarted':
+                return (
+                    <div className="min-h-screen flex flex-col p-4 text-center">
+                        <header className="py-4 flex justify-center items-center">
+                            <h1 className="text-4xl font-bold">LeanX</h1>
+                        </header>
+                        <main className="flex-grow flex flex-col items-center justify-center space-y-8">
+                            {profile?.picture && (
+                                <img src={profile.picture} alt="Profile" className="w-32 h-32 rounded-2xl object-cover border-4 border-accent" />
+                            )}
+                            <p className="text-3xl text-off-white">
+                                Let's get started, <span className="font-bold text-accent">{profile?.name}</span>!
+                            </p>
+                            <button
+                                onClick={() => setView('chooseCycle')}
+                                className="w-full max-w-xs bg-accent text-off-white font-bold py-3 rounded-full text-lg transition-transform active:scale-95"
+                            >
+                                Choose Workout
+                            </button>
+                        </main>
+                    </div>
+                );
+            case 'camera':
+                return (
+                    <CameraView 
+                        onPictureTaken={handleImageSelected} 
+                        onCancel={() => setView(returnToView)} 
+                    />
+                );
+            case 'imageCropper':
+                if (imageToCrop) {
+                    return <ImageCropper 
+                        src={imageToCrop} 
+                        onComplete={handleCropComplete} 
+                        onCancel={() => {
+                            setView(returnToView);
+                            setImageToCrop(null);
+                        }} 
+                    />
+                }
+                setView(returnToView);
+                return null;
             case 'workout':
                 if (selectedWorkout) {
                     return <WorkoutScreen 
@@ -187,6 +348,7 @@ const App: React.FC = () => {
                         onFinish={handleWorkoutFinish}
                         onShowExerciseInfo={setModalExercise}
                         onSaveAndExit={handleSaveAndExitWorkout}
+                        isWakeLockSupported={isWakeLockSupported}
                     />;
                 }
                 return null;
@@ -194,22 +356,37 @@ const App: React.FC = () => {
                 return <FinishedScreen onLogReps={handleLogReps} onContinue={handleContinueFromFinish} />;
             case 'repTracking':
                 if (selectedWorkout) {
+                    const summedReps = sessionReps.map(exerciseReps => 
+                        exerciseReps.reduce((acc, rep) => acc + (rep || 0), 0)
+                    );
                     return <RepTrackingScreen 
                         workout={selectedWorkout} 
                         onSaveReps={handleSaveReps} 
                         onBack={handleBack} 
-                        initialReps={sessionReps}
+                        initialReps={summedReps}
                     />;
                 }
                 return null;
             case 'profile':
-                return <ProfileScreen 
-                    profile={profile} 
-                    progress={progress} 
-                    workouts={workouts} 
-                    onSaveProfile={handleSaveProfile} 
-                    onBack={handleBack}
-                />;
+                 if (profile) {
+                    return <ProfileScreen 
+                        profile={profile} 
+                        progress={progress} 
+                        workouts={workouts} 
+                        onUpdateProfile={handleUpdateProfile}
+                        onBack={handleBack}
+                        onTakePhoto={() => {
+                            setReturnToView('profile');
+                            setView('camera');
+                        }}
+                        onChooseFromGallery={() => {
+                            setReturnToView('profile');
+                            fileInputRef.current?.click();
+                        }}
+                    />;
+                 }
+                 setView('welcome'); // Fallback if profile is somehow null
+                 return null;
             case 'tutorial':
                 return <TutorialScreen
                     onSelectExercise={setModalExercise}
@@ -220,6 +397,7 @@ const App: React.FC = () => {
                     settings={settings}
                     onUpdateSettings={handleUpdateSettings}
                     onBack={handleBack}
+                    isWakeLockSupported={isWakeLockSupported}
                 />;
             case 'chooseCycle':
                 return (
@@ -283,6 +461,49 @@ const App: React.FC = () => {
 
     return (
         <main className={`min-h-screen ${showNavBar ? 'pb-24' : ''}`}>
+            <input
+                type="file"
+                ref={fileInputRef}
+                onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            const img = document.createElement('img');
+                            img.onload = () => {
+                                const MAX_DIMENSION = 800;
+                                let { width, height } = img;
+                        
+                                if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+                                    if (width > height) {
+                                        height = Math.round((height * MAX_DIMENSION) / width);
+                                        width = MAX_DIMENSION;
+                                    } else {
+                                        width = Math.round((width * MAX_DIMENSION) / height);
+                                        height = MAX_DIMENSION;
+                                    }
+                                }
+                                
+                                const canvas = document.createElement('canvas');
+                                canvas.width = width;
+                                canvas.height = height;
+                                const ctx = canvas.getContext('2d');
+                                if (ctx) {
+                                    ctx.drawImage(img, 0, 0, width, height);
+                                    const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                                    handleImageSelected(dataUrl);
+                                }
+                            };
+                            img.src = event.target?.result as string;
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                    // Reset file input value to allow selecting the same file again
+                    e.target.value = '';
+                }}
+                accept="image/*"
+                className="hidden"
+            />
             {renderView()}
             {modalExercise && (
                 <ExerciseDetailModal 

@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import type { Workout, Progress, CycleGroup, WorkoutItem } from '../types';
 import * as ProgressService from '../services/progressService';
+import { CheckIcon } from './icons';
 
 interface HistoryProps {
   workouts: Workout[];
@@ -10,8 +11,6 @@ interface HistoryProps {
   onUpdateProgress: (newProgress: Progress) => void;
   selectedWorkoutIndex: number | null;
 }
-
-const abbrDay = (day?: string) => day ? String(day).slice(0, 2) : '—';
 
 const groupWorkouts = (workouts: Workout[], progress: Progress): CycleGroup[] => {
     const map = new Map<string, Map<string, WorkoutItem[]>>();
@@ -38,46 +37,17 @@ const groupWorkouts = (workouts: Workout[], progress: Progress): CycleGroup[] =>
                     total: items.length,
                     doneCount: weekDoneCount,
                 };
-            }),
+            }).sort((a,b) => a.name.localeCompare(b.name)),
             total: allItems.length,
             doneCount: doneCount,
         };
     });
 };
 
-const HistorySquare: React.FC<{
-  item: WorkoutItem,
-  progress: Progress,
-  onSelectWorkout: (index: number) => void,
-  onMarkDone: (uid: string) => void;
-  isSelected: boolean;
-}> = ({ item, progress, onSelectWorkout, onMarkDone, isSelected }) => {
-    const uid = ProgressService.getWorkoutUID(item.workout);
-    const pItem = progress[uid] || {};
-
-    const classes = ['w-6 h-6 rounded-md border transition-all duration-200 focus:outline-none'];
-    if (pItem.done) classes.push('bg-green-500 border-green-500');
-    else if (pItem.inProgress) classes.push('bg-yellow-500 border-yellow-500');
-    else classes.push('bg-gray-dark border-gray-light');
-    
-    if (isSelected) {
-        classes.push('ring-2 ring-offset-2 ring-accent ring-offset-background');
-    }
-
-    const title = `${item.workout.day || 'Day'} — ${item.workout.week || 'Week'} — ${item.workout.cycle || 'Cycle'}\n${item.workout.timing || ''}`;
-    
-    return (
-        <button
-            className={classes.join(' ')}
-            title={title}
-            onClick={() => onSelectWorkout(item.index)}
-            onDoubleClick={(e) => { e.stopPropagation(); onMarkDone(uid); }}
-        />
-    );
-}
-
 export const History: React.FC<HistoryProps> = ({ workouts, progress, onSelectWorkout, onUpdateProgress, selectedWorkoutIndex }) => {
   const [openCycles, setOpenCycles] = useState<Record<string, boolean>>(() => ProgressService.getCollapseState());
+  const [openWeeks, setOpenWeeks] = useState<Record<string, boolean>>({});
+
   const cycleGroups = useMemo(() => groupWorkouts(workouts, progress), [workouts, progress]);
 
   const toggleCycle = (name: string) => {
@@ -86,11 +56,14 @@ export const History: React.FC<HistoryProps> = ({ workouts, progress, onSelectWo
     ProgressService.setCollapseState(newState);
   };
   
+  const toggleWeek = (key: string) => {
+    setOpenWeeks(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
   const handleMarkDone = (uid: string) => {
       const p = ProgressService.loadProgress();
       const current = p[uid] || {};
       
-      // Toggle the done state
       const isNowDone = !current.done;
       
       const newItem = { 
@@ -100,8 +73,6 @@ export const History: React.FC<HistoryProps> = ({ workouts, progress, onSelectWo
         ts: Date.now() 
       };
 
-      // If we are un-marking a workout, it makes sense to clear the reps that were logged
-      // for that completed session.
       if (!isNowDone) {
         delete newItem.reps;
       }
@@ -114,7 +85,7 @@ export const History: React.FC<HistoryProps> = ({ workouts, progress, onSelectWo
 
   const handleMarkCycleDone = (cycleName: string) => {
     let p = ProgressService.loadProgress();
-    workouts.forEach((w, i) => {
+    workouts.forEach((w) => {
       if (w.cycle === cycleName) {
         const uid = ProgressService.getWorkoutUID(w);
         p[uid] = { done: true, inProgress: false, ts: Date.now() };
@@ -126,7 +97,7 @@ export const History: React.FC<HistoryProps> = ({ workouts, progress, onSelectWo
 
   const handleResetCycle = (cycleName: string) => {
     let p = ProgressService.loadProgress();
-    workouts.forEach((w, i) => {
+    workouts.forEach((w) => {
       if (w.cycle === cycleName) {
         const uid = ProgressService.getWorkoutUID(w);
         delete p[uid];
@@ -139,8 +110,15 @@ export const History: React.FC<HistoryProps> = ({ workouts, progress, onSelectWo
   return (
     <div className="space-y-4">
       {cycleGroups.map(cycle => (
-        <details key={cycle.name} open={openCycles[cycle.name] ?? false} onToggle={(e) => { e.preventDefault(); toggleCycle(cycle.name); }} className="bg-gray-dark rounded-xl overflow-hidden">
-          <summary className="list-none cursor-pointer p-4">
+        <div key={cycle.name} className="bg-gray-dark rounded-xl overflow-hidden">
+          <div
+            onClick={() => toggleCycle(cycle.name)}
+            className="cursor-pointer p-4"
+            role="button"
+            aria-expanded={openCycles[cycle.name] ?? false}
+            tabIndex={0}
+            onKeyPress={(e) => (e.key === 'Enter' || e.key === ' ') && toggleCycle(cycle.name)}
+          >
             <div className="flex justify-between items-center">
               <span className="font-bold">{cycle.name}</span>
               <div className="flex items-center gap-4">
@@ -157,41 +135,67 @@ export const History: React.FC<HistoryProps> = ({ workouts, progress, onSelectWo
                 style={{ width: cycle.total > 0 ? `${(cycle.doneCount / cycle.total) * 100}%` : '0%' }}>
               </div>
             </div>
-          </summary>
-          <div className="p-4 pt-0 space-y-3">
-              {cycle.weeks.map(week => (
-                <div key={week.name} className="space-y-2 bg-gray-light/30 p-3 rounded-lg">
-                  <div className="flex justify-between items-center mb-1">
-                    <div className="text-sm font-semibold text-gray-text">{week.name}</div>
-                    <div className="text-xs text-gray-text">{week.doneCount}/{week.total}</div>
-                  </div>
-                  <div className="w-full bg-gray-dark rounded-full h-1 mb-2">
-                      <div 
-                        className="bg-accent h-1 rounded-full transition-all duration-500" 
-                        style={{ width: week.total > 0 ? `${(week.doneCount / week.total) * 100}%` : '0%' }}>
-                      </div>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    {week.items.map(item => (
-                      <HistorySquare 
-                         key={item.index}
-                         item={item}
-                         progress={progress}
-                         onSelectWorkout={onSelectWorkout}
-                         onMarkDone={handleMarkDone}
-                         isSelected={item.index === selectedWorkoutIndex}
-                      />
-                    ))}
-                  </div>
-                  <div className="flex gap-2 text-gray-text text-xs">
-                    {week.items.map((item, i) => (
-                      <span key={i} title={item.workout.day} className="w-6 text-center">{abbrDay(item.workout.day)}</span>
-                    ))}
-                  </div>
-                </div>
-              ))}
           </div>
-        </details>
+          <div className={`transition-[max-height] duration-500 ease-in-out overflow-hidden ${openCycles[cycle.name] ? 'max-h-[1500px]' : 'max-h-0'}`}>
+            <div className="p-4 pt-0 space-y-3">
+              {cycle.weeks.map(week => {
+                  const weekKey = `${cycle.name}|${week.name}`;
+                  const isWeekOpen = openWeeks[weekKey] ?? false;
+                  return (
+                    <div key={weekKey} className="bg-gray-light/30 rounded-lg overflow-hidden">
+                      <div
+                        onClick={() => toggleWeek(weekKey)}
+                        className="cursor-pointer p-3"
+                        role="button"
+                        aria-expanded={isWeekOpen}
+                        tabIndex={0}
+                        onKeyPress={(e) => (e.key === 'Enter' || e.key === ' ') && toggleWeek(weekKey)}
+                      >
+                        <div className="flex justify-between items-center">
+                          <div className="text-sm font-semibold text-gray-text">{week.name}</div>
+                          <div className="text-xs text-gray-text">{week.doneCount}/{week.total}</div>
+                        </div>
+                        <div className="w-full bg-gray-dark rounded-full h-1 mt-1">
+                            <div 
+                              className="bg-accent h-1 rounded-full transition-all duration-500" 
+                              style={{ width: week.total > 0 ? `${(week.doneCount / week.total) * 100}%` : '0%' }}>
+                            </div>
+                        </div>
+                      </div>
+                      <div className={`transition-[max-height] duration-500 ease-in-out overflow-hidden ${isWeekOpen ? 'max-h-[500px]' : 'max-h-0'}`}>
+                        <div className="px-2 pb-2 space-y-1">
+                          {week.items.map(item => {
+                              const uid = ProgressService.getWorkoutUID(item.workout);
+                              const pItem = progress[uid] || {};
+                              const isSelected = selectedWorkoutIndex === item.index;
+
+                              return (
+                                  <div key={item.index} className={`flex items-center gap-3 p-2 rounded-md transition-colors ${isSelected ? 'bg-accent/20' : 'hover:bg-gray-light/50'}`}>
+                                      <div 
+                                          onClick={() => onSelectWorkout(item.index)} 
+                                          className="flex-grow flex items-center gap-3 cursor-pointer"
+                                      >
+                                          <img src={item.workout.exercises[0]?.image || `https://picsum.photos/seed/${item.index}/40/40`} alt={item.workout.day} className="w-10 h-10 rounded-md object-cover bg-gray-light flex-shrink-0" />
+                                          <span className="font-medium text-off-white">{item.workout.day}</span>
+                                      </div>
+                                      <button 
+                                          onClick={() => handleMarkDone(uid)} 
+                                          className={`w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors ${pItem.done ? 'bg-green-500 border-green-500' : 'border-gray-light hover:border-gray-text'}`}
+                                          aria-label={`Mark ${item.workout.day} as ${pItem.done ? 'not done' : 'done'}`}
+                                      >
+                                          {pItem.done && <CheckIcon className="w-4 h-4 text-white" />}
+                                      </button>
+                                  </div>
+                              );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+              })}
+            </div>
+          </div>
+        </div>
       ))}
     </div>
   );

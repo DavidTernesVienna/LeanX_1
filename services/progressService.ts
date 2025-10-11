@@ -31,6 +31,9 @@ export const loadSettings = (): Settings => {
         enableWarmup: parsed.enableWarmup ?? true,
         enableCooldown: parsed.enableCooldown ?? true,
         enableGlassMotion: parsed.enableGlassMotion ?? true,
+        pauseOnRepCount: parsed.pauseOnRepCount ?? true,
+        enableColor: parsed.enableColor ?? true,
+        enableWakeLock: parsed.enableWakeLock ?? true,
       };
     }
   } catch {
@@ -43,6 +46,9 @@ export const loadSettings = (): Settings => {
     enableWarmup: true,
     enableCooldown: true,
     enableGlassMotion: true,
+    pauseOnRepCount: true,
+    enableColor: true,
+    enableWakeLock: true,
   }; 
 };
 
