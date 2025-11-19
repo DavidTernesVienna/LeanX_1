@@ -15,7 +15,8 @@ const createExercise = (name: string): Exercise => ({
 export const CRAWLING_WARMUP_NAMES = ["Pointers", "Hip Circles", "Twist and Reach"];
 export const SIDELYING_WARMUP_NAMES = ["Backstroke", "ITB Leg Lifts", "Side-Lying Leg Lifts"];
 
-const WORKOUT_NAMES: RawWorkout[] = [
+// FIX: Export WORKOUT_NAMES to make it accessible by other modules.
+export const WORKOUT_NAMES: RawWorkout[] = [
     // Cycles 1,2,3,4
   { cycle: "Beginner", week: "Week 1", day: "Monday",    preWarmUp: "Standing March", timing: "40/20", warmUp: "Crawling Warm Up", exercises: ["Parallel Leg Crunch","Starfish Twist","Stork Stance"], coolDown: "Spiderman A-Frames" },
   { cycle: "Beginner", week: "Week 1", day: "Wednesday", preWarmUp: "Standing March", timing: "40/20", warmUp: "Crawling Warm Up", exercises: ["Parallel Leg Bridge","Starfish Twist","Stork Stance"], coolDown: "Spiderman A-Frames" },

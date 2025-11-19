@@ -1,6 +1,6 @@
 
 
-import type { Workout, Progress, TimerSnapshot, Profile, Settings } from '../types';
+import type { Workout, Progress, TimerSnapshot, Profile, Settings, Exercise, ProfileStats } from '../types';
 
 const SCHEMA_VERSION = 1;
 
@@ -10,6 +10,7 @@ const COLLAPSE_KEY = 'leanTimerCollapse';
 const YT_KEY = 'leanTimerYT';
 const PROFILE_KEY = 'leanTimerProfile';
 const SETTINGS_KEY = 'leanTimerSettings';
+const CUSTOM_EXERCISES_KEY = 'leanTimerCustomExercises';
 
 export const getWorkoutUID = (workout: Workout): string => workout.id;
 
@@ -69,6 +70,19 @@ export const loadProfile = (): Profile | null => {
     
     // No version or old version, treat as simple data and re-save it in new format
     const profileData = parsed as Profile; 
+    
+    // Initialize stats if missing
+    if(!profileData.stats) {
+        profileData.stats = {
+            totalXp: 0,
+            level: 1,
+            currentStreak: 0,
+            bestStreak: 0,
+            lastWorkoutDate: null,
+            workoutsCompleted: 0
+        };
+    }
+
     saveProfile(profileData); 
     return profileData;
 
@@ -83,6 +97,79 @@ export const saveProfile = (profile: Profile): void => {
     data: profile,
   };
   localStorage.setItem(PROFILE_KEY, JSON.stringify(versionedData));
+};
+
+
+// --- Gamification Logic ---
+export const calculateXp = (workout: Workout): number => {
+    // Base XP: (work + rest) * rounds * exercises
+    const cycleTimeSeconds = (workout.work + workout.rest) * workout.exercises.length * workout.rounds;
+    // Normalize: ~10 XP per minute of intense work
+    return Math.round(cycleTimeSeconds / 6); 
+};
+
+export const calculateLevel = (xp: number): number => {
+    // Simple RPG curve: Level = sqrt(XP / 100) + 1
+    return Math.floor(Math.sqrt(xp / 100)) + 1;
+};
+
+export const getLevelProgress = (xp: number): number => {
+    const currentLevel = calculateLevel(xp);
+    const nextLevel = currentLevel + 1;
+    const xpForCurrent = 100 * Math.pow(currentLevel - 1, 2);
+    const xpForNext = 100 * Math.pow(nextLevel - 1, 2);
+    
+    return Math.min(100, Math.max(0, ((xp - xpForCurrent) / (xpForNext - xpForCurrent)) * 100));
+};
+
+export const updateProfileStats = (workout: Workout): { profile: Profile, xpGained: number, levelUp: boolean } | null => {
+    const profile = loadProfile();
+    if (!profile) return null;
+
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    
+    let stats = profile.stats || {
+        totalXp: 0,
+        level: 1,
+        currentStreak: 0,
+        bestStreak: 0,
+        lastWorkoutDate: null,
+        workoutsCompleted: 0
+    };
+
+    // Calculate XP
+    const xpGained = calculateXp(workout);
+    stats.totalXp += xpGained;
+    
+    const oldLevel = stats.level;
+    stats.level = calculateLevel(stats.totalXp);
+    const levelUp = stats.level > oldLevel;
+
+    stats.workoutsCompleted += 1;
+
+    // Calculate Streak
+    if (stats.lastWorkoutDate !== today) {
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+        if (stats.lastWorkoutDate === yesterdayStr) {
+            stats.currentStreak += 1;
+        } else {
+            stats.currentStreak = 1; // Reset or start new
+        }
+        
+        if (stats.currentStreak > stats.bestStreak) {
+            stats.bestStreak = stats.currentStreak;
+        }
+        stats.lastWorkoutDate = today;
+    }
+
+    profile.stats = stats;
+    saveProfile(profile);
+
+    return { profile, xpGained, levelUp };
 };
 
 
@@ -106,8 +193,6 @@ export const loadProgress = (): Progress => {
     for (const key in oldProgress) {
         if (Object.prototype.hasOwnProperty.call(oldProgress, key)) {
             const item = oldProgress[key];
-            // The breaking change was in TimerSnapshot (idxWorkout -> workoutId).
-            // Safest migration is to clear any in-progress state.
             if (item.inProgress || item.snap) {
                 console.warn(`Migration: Clearing stale in-progress state for workout key: ${key}`);
                 item.inProgress = false;
@@ -117,7 +202,7 @@ export const loadProgress = (): Progress => {
         }
     }
 
-    saveProgress(migratedProgress); // Save in new versioned format
+    saveProgress(migratedProgress); 
     return migratedProgress;
 
   } catch (e) {
@@ -164,7 +249,7 @@ export const saveRepsForWorkout = (uid: string, reps: number[]): Progress => {
   const p = loadProgress();
   if (p[uid]) {
     p[uid].reps = reps;
-    p[uid].ts = Date.now(); // Also update timestamp
+    p[uid].ts = Date.now(); 
   }
   saveProgress(p);
   return p;
@@ -193,6 +278,36 @@ export const loadResume = (): TimerSnapshot | null => {
 export const clearResume = (): void => {
   localStorage.removeItem(RESUME_KEY);
 };
+
+// --- Custom Exercises Management ---
+export const loadCustomExercises = (): Exercise[] => {
+  try {
+    const raw = localStorage.getItem(CUSTOM_EXERCISES_KEY);
+    if (raw) {
+      return JSON.parse(raw) as Exercise[];
+    }
+  } catch {
+    // ignore error
+  }
+  return [];
+};
+
+export const saveCustomExercises = (exercises: Exercise[]): void => {
+  localStorage.setItem(CUSTOM_EXERCISES_KEY, JSON.stringify(exercises));
+};
+
+export const addCustomExercise = (exercise: Exercise): Exercise[] => {
+  const exercises = loadCustomExercises();
+  const existingIndex = exercises.findIndex(e => e.name.toLowerCase() === exercise.name.toLowerCase());
+  if (existingIndex > -1) {
+    exercises[existingIndex] = exercise;
+  } else {
+    exercises.push(exercise);
+  }
+  saveCustomExercises(exercises);
+  return exercises;
+};
+
 
 // --- UI State ---
 export const getCollapseState = (): Record<string, boolean> => {

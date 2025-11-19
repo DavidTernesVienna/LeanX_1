@@ -8,12 +8,12 @@ import { useTimer } from '../hooks/useTimer';
 const PHASE_COLORS: Record<WorkoutPhase, string> = {
   work: '#16a34a',          // green-600
   rest: '#b45309',          // amber-700
-  warmup: '#16a34a',        // green-600 (was blue)
+  warmup: '#2563eb',        // blue-600
   warmup_rest: '#b45309',   // amber-700
-  getready: '#475569',      // slate-600 (for Pre Warm Up)
-  getready_work: '#475569', // slate-600
-  getready_cooldown: '#475569', // slate-600
-  cooldown: '#16a34a',      // green-600 (was lighter green)
+  getready: '#334155',      // slate-700
+  getready_work: '#334155', // slate-700
+  getready_cooldown: '#334155', // slate-700
+  cooldown: '#0d9488',      // teal-600
   done: '#111827',          // gray-900
 };
 
@@ -21,13 +21,19 @@ const getPhaseTextColorClass = (phase: WorkoutPhase): string => {
   switch (phase) {
     case 'rest':
     case 'warmup_rest':
-      return 'text-rest-yellow';
+      return 'text-amber-500';
     case 'getready':
     case 'getready_work':
     case 'getready_cooldown':
       return 'text-slate-400';
+    case 'work':
+      return 'text-green-500';
+    case 'warmup':
+      return 'text-blue-400';
+    case 'cooldown':
+      return 'text-teal-400';
     default:
-      return 'text-accent';
+      return 'text-off-white';
   }
 };
 
@@ -35,11 +41,26 @@ const clamp = (v: number, min = 0, max = 1) => Math.min(max, Math.max(min, v));
 const pad = (n: number) => String(n).padStart(2, '0');
 const formatTime = (s: number) => `${pad(Math.floor(s / 60))}:${pad(Math.floor(s % 60))}`;
 
-const Dot: React.FC<{ status: 'done' | 'active' | 'pending' }> = ({ status }) => {
-    const baseClasses = "w-3 h-3 rounded-full transition-colors";
-    if (status === 'done') return <div className={`${baseClasses} bg-green-500`}></div>;
-    if (status === 'active') return <div className={`${baseClasses} bg-accent`}></div>;
-    return <div className={`${baseClasses} bg-gray-light`}></div>;
+// Rounded Segment for Progress
+const Segment: React.FC<{ status: 'done' | 'active' | 'pending', type?: 'warmup' | 'work' | 'cooldown', isLast?: boolean }> = ({ status, type = 'work', isLast }) => {
+    const baseClasses = "h-2 flex-1 transition-all duration-500 rounded-full"; 
+    
+    let activeColor = 'bg-accent shadow-[0_0_10px_rgba(74,222,128,0.8)]';
+    let doneColor = 'bg-accent/40';
+    let pendingColor = 'bg-gray-800';
+    
+    if(type === 'warmup') {
+        activeColor = 'bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)]';
+        doneColor = 'bg-blue-500/40';
+    }
+    if(type === 'cooldown') {
+        activeColor = 'bg-teal-500 shadow-[0_0_10px_rgba(20,184,166,0.8)]';
+        doneColor = 'bg-teal-500/40';
+    }
+
+    if (status === 'done') return <div className={`${baseClasses} ${doneColor}`}></div>;
+    if (status === 'active') return <div className={`${baseClasses} ${activeColor} scale-y-150 relative z-10`}></div>;
+    return <div className={`${baseClasses} ${pendingColor}`}></div>;
 };
 
 const ProgressIndicator: React.FC<{
@@ -66,83 +87,63 @@ const ProgressIndicator: React.FC<{
 
         // current exercise
         if (phase === 'work') return 'active';
-        if (phase === 'rest') return 'done';
+        if (phase === 'rest') return 'done'; // Completed the work part
 
         return 'pending';
     };
 
-    const getWarmupDotStatus = (dotIndex: number): 'done' | 'active' | 'pending' => {
+    const getWarmupStatus = (index: number): 'done' | 'active' | 'pending' => {
         if (phase === 'getready') return 'pending';
         if (!phase.startsWith('warmup')) return 'done';
-
-        if (dotIndex < warmupStage) return 'done';
-        if (dotIndex === warmupStage) return 'active';
+        if (index < warmupStage) return 'done';
+        if (index === warmupStage) return 'active';
         return 'pending';
     };
 
-    const getCooldownDotStatus = (dotIndex: number): 'done' | 'active' | 'pending' => {
-        if (phase === 'done') return 'done';
-        if (phase !== 'cooldown' && phase !== 'getready_cooldown') return 'pending';
-        
-        if (dotIndex < cooldownStage) return 'done';
-        if (dotIndex === cooldownStage && phase === 'cooldown') return 'active';
-        return 'pending';
+    const getCooldownStatus = (index: number): 'done' | 'active' | 'pending' => {
+         if (phase === 'done') return 'done';
+         if (phase !== 'cooldown' && phase !== 'getready_cooldown') return 'pending';
+         if (index < cooldownStage) return 'done';
+         if (index === cooldownStage) return 'active';
+         return 'pending';
     };
-
-    const ProgressArrow = () => (
-        <div className="flex items-center justify-center text-white">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={6}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-            </svg>
-        </div>
-    );
 
     return (
-        <div className="flex items-stretch justify-center gap-2 text-sm text-gray-text uppercase font-semibold w-full">
-            {settings.enableWarmup && (
-                <>
-                    <div className="flex flex-col items-center gap-1 bg-black/20 p-3 rounded-lg">
-                         <span className="text-center">Warm Up</span>
-                         <div className="flex flex-col items-center gap-1 mt-1">
-                            <div className="flex gap-2">
-                                <Dot key="warmup-dot-0" status={getWarmupDotStatus(0)} />
-                            </div>
-                            <div className="flex gap-2">
-                                {[1, 2, 3].map(i => <Dot key={`warmup-dot-${i}`} status={getWarmupDotStatus(i)} />)}
-                            </div>
-                            <div className="flex gap-2">
-                                {[4, 5, 6].map(i => <Dot key={`warmup-dot-${i}`} status={getWarmupDotStatus(i)} />)}
-                            </div>
-                        </div>
-                    </div>
-                    <ProgressArrow />
-                </>
-            )}
-            
-            <div className="flex flex-col items-center gap-1 bg-black/20 p-3 rounded-lg">
-                <span className="text-center">HIIT</span>
-                <div className="flex flex-col items-center gap-2 mt-1">
-                    {Array.from({ length: rounds }).map((_, roundIndex) => (
-                        <div key={roundIndex} className="flex justify-center gap-2">
-                            {workout.exercises.map((ex, exIndex) => (
-                                <Dot key={`${ex.name}-${roundIndex}`} status={getStatus(roundIndex + 1, exIndex)} />
-                            ))}
-                        </div>
-                    ))}
-                </div>
+        <div className="w-full max-w-md px-4 space-y-3 bg-gray-900/40 backdrop-blur-sm p-3 rounded-2xl border border-white/5">
+            {/* Text Labels */}
+            <div className="flex justify-between text-[10px] font-bold uppercase text-gray-500 tracking-wider">
+                <span>Warmup</span>
+                <span>Progress</span>
+                <span>Cool</span>
             </div>
 
-            {settings.enableCooldown && (
-                <>
-                    <ProgressArrow />
-                    <div className="flex flex-col items-center gap-1 bg-black/20 p-3 rounded-lg">
-                        <span className="text-center">Cool Down</span>
-                        <div className="flex justify-center gap-2 mt-1">
-                            {[0, 1].map(i => <Dot key={`cooldown-dot-${i}`} status={getCooldownDotStatus(i)} />)}
-                        </div>
+            {/* Progress Bars */}
+            <div className="flex items-center gap-2 h-3">
+                 {settings.enableWarmup && (
+                    <div className="flex w-1/6 gap-1">
+                         <Segment status={getWarmupStatus(0)} type="warmup" />
+                         <Segment status={getWarmupStatus(1)} type="warmup" />
+                         <Segment status={getWarmupStatus(4)} type="warmup" />
                     </div>
-                </>
-            )}
+                )}
+                
+                <div className="flex-grow flex gap-1.5">
+                     {Array.from({ length: rounds }).map((_, rIdx) => (
+                        <div key={rIdx} className="flex-grow flex gap-1">
+                            {workout.exercises.map((_, exIdx) => (
+                                <Segment key={`${rIdx}-${exIdx}`} status={getStatus(rIdx + 1, exIdx)} type="work" />
+                            ))}
+                        </div>
+                     ))}
+                </div>
+
+                 {settings.enableCooldown && (
+                    <div className="flex w-1/6 gap-1">
+                        <Segment status={getCooldownStatus(1)} type="cooldown" />
+                        <Segment status={getCooldownStatus(2)} type="cooldown" />
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
@@ -155,17 +156,17 @@ const ToggleSwitch: React.FC<{
   disabled?: boolean;
 }> = ({ label, labelId, checked, onChange, disabled = false }) => (
   <div className={`flex justify-between items-center ${disabled ? 'opacity-50' : ''}`}>
-    <label id={labelId} className="font-medium text-off-white/90">{label}</label>
+    <label id={labelId} className="font-bold text-xs uppercase text-gray-400 tracking-wide">{label}</label>
     <button
       role="switch"
       aria-checked={checked}
       aria-labelledby={labelId}
       onClick={onChange}
       disabled={disabled}
-      className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${checked ? 'bg-accent' : 'bg-gray-light'} ${disabled ? 'cursor-not-allowed' : ''}`}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors border border-transparent ${checked ? 'bg-accent/20 border-accent' : 'bg-gray-800'} ${disabled ? 'cursor-not-allowed' : ''}`}
     >
       <span
-        className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${checked ? 'translate-x-7' : 'translate-x-1'}`}
+        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${checked ? 'translate-x-6 bg-accent' : 'translate-x-1 bg-gray-500'}`}
       />
     </button>
   </div>
@@ -221,11 +222,11 @@ const HoldButton: React.FC<{
       onMouseLeave={resetHold}
       onTouchStart={(e) => { e.preventDefault(); startHold(); }}
       onTouchEnd={resetHold}
-      className={`relative overflow-hidden ${className}`}
+      className={`relative overflow-hidden rounded-xl ${className}`}
     >
-      <span className="relative z-10">{children}</span>
+      <span className="relative z-10 font-bold uppercase tracking-widest">{children}</span>
       <div
-        className="absolute top-0 left-0 h-full bg-white/20"
+        className="absolute top-0 left-0 h-full bg-white/10 transition-all duration-75 ease-linear"
         style={{ width: `${progress * 100}%` }}
       ></div>
     </button>
@@ -247,43 +248,32 @@ const SettingsModal: React.FC<{
     };
 
     return (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-            <div className="bg-gray-dark p-6 rounded-xl w-[90vw] max-w-sm space-y-6 m-4" onClick={e => e.stopPropagation()}>
-                <h2 className="text-xl font-bold text-center">Settings</h2>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
+            <div className="bg-gray-900 p-6 w-[90vw] max-w-sm space-y-6 m-4 rounded-3xl border border-white/10 shadow-2xl" onClick={e => e.stopPropagation()}>
+                
+                <h2 className="text-lg font-bold text-center tracking-wider text-white uppercase border-b border-white/5 pb-4">Settings</h2>
                 <div className="space-y-4">
-                    <ToggleSwitch label="Warm Up" labelId="warmup-toggle" checked={settings.enableWarmup} onChange={() => handleSettingChange('enableWarmup', !settings.enableWarmup)} />
-                    <ToggleSwitch label="Cool Down" labelId="cooldown-toggle" checked={settings.enableCooldown} onChange={() => handleSettingChange('enableCooldown', !settings.enableCooldown)} />
-                    <ToggleSwitch label="Audio Cues" labelId="audio-toggle" checked={settings.audioCues} onChange={() => handleSettingChange('audioCues', !settings.audioCues)} />
+                    <ToggleSwitch label="Warm Up Phase" labelId="warmup-toggle" checked={settings.enableWarmup} onChange={() => handleSettingChange('enableWarmup', !settings.enableWarmup)} />
+                    <ToggleSwitch label="Cool Down Phase" labelId="cooldown-toggle" checked={settings.enableCooldown} onChange={() => handleSettingChange('enableCooldown', !settings.enableCooldown)} />
+                    <ToggleSwitch label="Audio Feedback" labelId="audio-toggle" checked={settings.audioCues} onChange={() => handleSettingChange('audioCues', !settings.audioCues)} />
                     <ToggleSwitch 
-                      label="Keep Screen On" 
+                      label="Screen Wake Lock" 
                       labelId="wake-lock-modal" 
                       checked={settings.enableWakeLock} 
                       onChange={() => handleSettingChange('enableWakeLock', !settings.enableWakeLock)}
                       disabled={!isWakeLockSupported}
                     />
-                    
-                    <div>
-                        <ToggleSwitch 
-                            label="Color" 
-                            labelId="enable-color" 
-                            checked={settings.enableColor} 
-                            onChange={() => handleSettingChange('enableColor', !settings.enableColor)} 
-                        />
-                        <div className="pl-6 pt-3 mt-3 border-l-2 border-gray-light/50 ml-1">
-                            <ToggleSwitch 
-                                label="Motion" 
-                                labelId="enable-glass-motion" 
-                                checked={settings.enableGlassMotion} 
-                                onChange={() => handleSettingChange('enableGlassMotion', !settings.enableGlassMotion)} 
-                                disabled={!settings.enableColor}
-                            />
-                        </div>
-                    </div>
+                    <ToggleSwitch 
+                        label="Immersive Mode" 
+                        labelId="enable-color" 
+                        checked={settings.enableColor} 
+                        onChange={() => handleSettingChange('enableColor', !settings.enableColor)} 
+                    />
                 </div>
-                <div className="space-y-3 pt-4 border-t border-gray-light">
-                     <button onClick={onSaveAndResume} className="w-full text-center bg-green-900 hover:bg-green-800 text-off-white font-bold py-3 rounded-full transition-colors">Save & Resume</button>
-                    <HoldButton onConfirm={onReset} className="w-full text-center bg-yellow-900 hover:bg-yellow-800 text-off-white font-bold py-3 rounded-full transition-colors">Reset Workout</HoldButton>
-                    <HoldButton onConfirm={onExit} className="w-full text-center bg-red-900 hover:bg-red-800 text-off-white font-bold py-3 rounded-full transition-colors">Exit Workout</HoldButton>
+                <div className="space-y-3 pt-4 border-t border-white/5">
+                     <button onClick={onSaveAndResume} className="w-full text-center bg-accent text-black rounded-xl font-bold py-3 transition-transform active:scale-95 uppercase tracking-wider shadow-[0_0_15px_rgba(74,222,128,0.3)]">Resume Workout</button>
+                    <HoldButton onConfirm={onReset} className="w-full text-center bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 border border-yellow-500/20 text-sm font-bold py-3 transition-colors">Reset Timer</HoldButton>
+                    <HoldButton onConfirm={onExit} className="w-full text-center bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 text-sm font-bold py-3 transition-colors">End Workout</HoldButton>
                 </div>
             </div>
         </div>
@@ -332,7 +322,6 @@ export const WorkoutScreen: React.FC<{
         togglePlayPause, changeExercise, resetWorkoutState, setRunning
     } = timer;
 
-    // --- Screen Wake Lock ---
     useEffect(() => {
         let wakeLock: any = null;
 
@@ -341,10 +330,8 @@ export const WorkoutScreen: React.FC<{
             try {
                 wakeLock = await (navigator as any).wakeLock.request('screen');
                 wakeLock.addEventListener('release', () => {
-                    console.log('Wake Lock was released.');
                     wakeLock = null; 
                 });
-                console.log('Wake Lock is active.');
             } catch (err: any) {
                 console.error(`Wake Lock request failed: ${err.name}, ${err.message}`);
             }
@@ -378,12 +365,6 @@ export const WorkoutScreen: React.FC<{
         togglePlayPause();
     }, [togglePlayPause]);
 
-    const titleFontSize = useMemo(() => {
-        const len = displayExercise.name.length;
-        if (len > 20) return 'text-2xl';
-        if (len > 14) return 'text-3xl';
-        return 'text-4xl';
-    }, [displayExercise]);
     
     const closeNumpadAndResume = useCallback(() => {
         setNumpadVisible(false);
@@ -424,110 +405,160 @@ export const WorkoutScreen: React.FC<{
         }
     }, [phase, workout, warmupStage]);
 
-    const phaseFillProgress = phaseDuration > 0 ? clamp(1 - (seconds / phaseDuration)) : 0;
-    const finalBackgroundColor = settings.enableColor ? PHASE_COLORS[phase] : 'transparent';
-    const overlayTransform = (settings.enableColor && settings.enableGlassMotion)
-        ? `scaleY(${phaseFillProgress})` // This goes from 0 to 1, growing overlay downwards
-        : (settings.enableColor ? 'scaleY(0)' : 'scaleY(1)'); // If color on but no motion, overlay is gone. If color off, overlay is full.
+    const shouldPulse = settings.enableColor && (phase === 'work' || phase === 'warmup' || phase === 'cooldown') && running;
 
+    // Determine Phase Badge Color
+    const phaseBadgeColor = useMemo(() => {
+        if (phase === 'work') return 'bg-green-500/20 border-green-500/50 text-green-400 shadow-[0_0_15px_rgba(34,197,94,0.3)]';
+        if (phase === 'rest' || phase === 'warmup_rest') return 'bg-amber-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]';
+        if (phase === 'warmup') return 'bg-blue-500/20 border-blue-500/50 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.3)]';
+        if (phase === 'cooldown') return 'bg-teal-500/20 border-teal-500/50 text-teal-400 shadow-[0_0_15px_rgba(20,184,166,0.3)]';
+        return 'bg-gray-700/50 border-gray-500 text-gray-400';
+    }, [phase]);
 
     return (
-        <div className="min-h-screen flex flex-col relative overflow-hidden">
-            <div className="absolute inset-0 transition-colors duration-500" style={{ backgroundColor: finalBackgroundColor }}>
-                 <div
-                    className={`absolute inset-0 bg-background transition-transform duration-200 ease-linear`}
-                    style={{
-                        transformOrigin: 'top',
-                        transform: overlayTransform,
-                    }}
-                />
+        <div className="min-h-screen flex flex-col relative overflow-hidden bg-black text-white font-sans selection:bg-accent selection:text-black">
+            
+            {/* Background Grid Effect */}
+            <div className="absolute inset-0 pointer-events-none opacity-10" 
+                 style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.15) 1px, transparent 0)', backgroundSize: '20px 20px' }}>
+            </div>
+            
+            {/* Pulsing Alert Background for Intense Phases */}
+             <div className={`absolute inset-0 transition-opacity duration-1000 pointer-events-none ${shouldPulse ? 'opacity-30' : 'opacity-0'}`}
+                  style={{ background: `radial-gradient(circle at center, ${PHASE_COLORS[phase]} 0%, transparent 70%)` }}>
             </div>
 
-            <div className="relative z-10 flex flex-col flex-grow p-4">
-                 <header className="flex items-center justify-between mt-2 mb-4 h-12 flex-shrink-0">
-                    <div className="w-10">
-                        <button onClick={onBack} className="p-2 -ml-2"><BackArrowIcon className="w-6 h-6" /></button>
+
+            {/* Main Layout */}
+            <div className="relative z-10 flex flex-col flex-grow p-4 max-w-md mx-auto w-full h-full justify-between">
+                 
+                 {/* Top HUD Bar */}
+                 <header className="flex items-center justify-between mt-2 h-16 pb-2">
+                    <button onClick={onBack} className="w-11 h-11 flex items-center justify-center rounded-full border border-white/10 bg-white/5 hover:bg-white/10 transition-colors backdrop-blur-md">
+                        <BackArrowIcon className="w-5 h-5 text-gray-300" />
+                    </button>
+                    
+                    <div className={`px-6 py-2 rounded-full border backdrop-blur-md transition-all duration-500 ${phaseBadgeColor}`}>
+                        <span className="font-bold text-sm tracking-widest uppercase">
+                            {headerTitle}
+                        </span>
                     </div>
-                    <div className="flex-1 text-center min-w-0">
-                        <span className={`${getPhaseTextColorClass(phase)} text-5xl font-bold uppercase tracking-widest animate-fade-in truncate`} title={headerTitle}>{headerTitle}</span>
-                    </div>
-                    <div className="w-10">
-                         <button onClick={() => {
-                            wasRunningOnSettingsOpen.current = running;
-                            setRunning(false);
-                            setIsSettingsOpen(true);
-                         }} className="p-2"><SettingsIcon className="w-6 h-6" /></button>
-                    </div>
+
+                     <button onClick={() => {
+                        wasRunningOnSettingsOpen.current = running;
+                        setRunning(false);
+                        setIsSettingsOpen(true);
+                     }} className="w-11 h-11 flex items-center justify-center rounded-full border border-white/10 bg-white/5 hover:bg-white/10 transition-colors backdrop-blur-md">
+                         <SettingsIcon className="w-5 h-5 text-gray-300" />
+                     </button>
                 </header>
 
-                <div className="flex-grow flex flex-col justify-around items-center">
-                    <main className="flex flex-col items-center justify-center space-y-4">
-                        <div className="relative w-80 h-80 rounded-lg bg-gray-dark/50 flex items-center justify-center shadow-2xl">
+                {/* Central Data Display */}
+                <main className="flex-grow flex flex-col items-center justify-center space-y-6 py-2 relative">
+                    
+                    {/* Media Frame (Glass Card Look) */}
+                    <div className="relative w-full aspect-square max-w-sm rounded-[32px] bg-gray-900/40 border border-white/10 shadow-2xl flex items-center justify-center overflow-hidden group backdrop-blur-md">
+                        
+                        {/* Live Feed Indicator */}
+                        <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/60 px-3 py-1 rounded-full border border-white/10 backdrop-blur-md">
+                            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                            <span className="text-[10px] font-bold text-white uppercase tracking-wider">Live</span>
+                        </div>
+
                         {(phase === 'rest' || phase === 'warmup_rest') ? (
-                            <div className="w-full h-full flex flex-col justify-between items-center">
-                                <div className="flex-grow flex flex-col items-center justify-center text-white">
-                                    <RestIcon className="w-32 h-32 opacity-80" />
-                                    <span className="text-5xl font-bold uppercase tracking-widest mt-4 text-white">NEXT UP</span>
+                            <div className="w-full h-full flex flex-col relative z-10">
+                                <div className="flex-grow flex flex-col items-center justify-center text-white bg-gradient-to-b from-amber-900/20 to-black/80">
+                                    <div className="w-24 h-24 rounded-full bg-amber-500/10 flex items-center justify-center mb-4 border border-amber-500/20 shadow-[0_0_30px_rgba(245,158,11,0.2)] animate-pulse">
+                                        <RestIcon className="w-12 h-12 text-amber-500" />
+                                    </div>
+                                    <span className="text-xl font-bold uppercase tracking-widest text-amber-400/90">Rest</span>
+                                    <div className="text-6xl font-bold mt-2 text-amber-500 tabular-nums tracking-tighter">{seconds}</div>
                                 </div>
                                 {nextUpExercise && (
-                                    <div className="w-full bg-black/30 p-3 rounded-b-lg animate-fade-in">
-                                        <div className="flex items-center gap-4">
-                                            <img src={nextUpExercise.image} alt={nextUpExercise.name} className="w-12 h-12 rounded-md object-cover bg-gray-light flex-shrink-0" />
-                                            <div className="flex-grow min-w-0">
-                                                <p className="text-off-white text-xl truncate font-semibold">{nextUpExercise.name}</p>
-                                            </div>
-                                            <button onClick={() => onShowExerciseInfo(nextUpExercise)} className="p-2 rounded-full hover:bg-white/10 transition-colors flex-shrink-0" aria-label={`More info about ${nextUpExercise.name}`}>
-                                                <InfoIcon className="w-6 h-6 text-off-white" />
-                                            </button>
+                                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 border-t border-white/10 p-4 backdrop-blur-xl">
+                                        <p className="text-[10px] text-accent font-bold uppercase mb-1.5 tracking-wider">Up Next</p>
+                                        <div className="flex items-center gap-3">
+                                            <img src={nextUpExercise.image} alt={nextUpExercise.name} className="w-12 h-12 rounded-xl border border-white/10 object-cover bg-gray-800 flex-shrink-0 grayscale" />
+                                            <p className="text-white text-sm font-bold truncate">{nextUpExercise.name}</p>
                                         </div>
                                     </div>
                                 )}
                             </div>
                             ) : (
                                 <>
-                                    <img src={displayExercise.image} alt={displayExercise.name} className="w-full h-full object-cover rounded-lg"/>
-                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 translate-y-[-50%] bg-off-white/80 backdrop-blur-sm text-background font-bold text-lg rounded-full shadow-md max-w-[90%] flex items-center gap-2 pl-6 pr-2 py-2">
-                                    <span className="truncate" title={displayExercise.name}>{displayExercise.name}</span>
-                                    <button onClick={() => onShowExerciseInfo(displayExercise)} className="flex-shrink-0 w-7 h-7 flex items-center justify-center bg-black/10 rounded-full hover:bg-black/20 transition-colors" aria-label={`More info about ${displayExercise.name}`}>
-                                            <InfoIcon className="w-5 h-5 text-gray-dark" />
-                                    </button>
+                                    {displayExercise.video ? (
+                                        <video
+                                            key={displayExercise.name + displayExercise.video}
+                                            src={displayExercise.video}
+                                            className="w-full h-full object-cover opacity-90"
+                                            autoPlay
+                                            loop
+                                            muted
+                                            playsInline
+                                        />
+                                    ) : (
+                                        <img src={displayExercise.image} alt={displayExercise.name} className="w-full h-full object-cover opacity-90"/>
+                                    )}
+                                    
+                                    {/* Objective Overlay */}
+                                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/70 to-transparent p-5 pt-12">
+                                        <div className="flex justify-between items-end">
+                                            <div>
+                                                <span className="text-[10px] text-accent font-bold uppercase tracking-widest block mb-1">Exercise</span>
+                                                <span className="text-2xl font-black text-white leading-none uppercase tracking-tight">{displayExercise.name}</span>
+                                            </div>
+                                            <button onClick={() => onShowExerciseInfo(displayExercise)} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 border border-white/10 transition-colors backdrop-blur-md">
+                                                <InfoIcon className="w-5 h-5 text-white" />
+                                            </button>
+                                        </div>
                                     </div>
                                 </>
                         )}
-                        </div>
-                        <div className="text-center w-80">
-                            <div className="text-8xl font-mono font-bold" style={{textShadow: '0 2px 10px rgba(0,0,0,0.5)'}}>
+                    </div>
+
+                    {/* Timer */}
+                    {(phase !== 'rest' && phase !== 'warmup_rest') && (
+                         <div className="relative w-full flex flex-col items-center justify-center py-2">
+                            <div className={`text-9xl font-black tracking-tighter ${getPhaseTextColorClass(phase)} tabular-nums leading-none drop-shadow-2xl`}>
                                 {formatTime(seconds)}
                             </div>
+                            <div className="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mt-2">Time Remaining</div>
                         </div>
-                    </main>
+                    )}
+                </main>
 
-                    <footer className="flex flex-col items-center flex-shrink-0">
-                        <div className="flex flex-col items-center justify-center w-full">
-                            <ProgressIndicator 
-                                workout={workout} 
-                                rounds={workout.rounds} 
-                                phase={phase} 
-                                currentRound={round} 
-                                currentExerciseIndex={exerciseIndex} 
-                                warmupStage={warmupStage} 
-                                cooldownStage={cooldownStage}
-                                settings={settings}
-                            />
-                            <div className="flex items-center justify-center gap-8 mt-6">
-                                <button onClick={() => changeExercise(-1)} disabled={!canGoPrev} className="p-4 text-off-white/80 rounded-full hover:bg-black/20 disabled:opacity-30 transition-colors">
-                                    <PrevIcon className="w-8 h-8" />
-                                </button>
-                                <button onClick={handleTogglePlayPause} className="w-32 h-16 bg-off-white text-background rounded-3xl flex items-center justify-center transition-transform active:scale-95 shadow-lg">
-                                    {running ? <PauseIcon className="w-10 h-10" /> : <PlayIcon className="w-10 h-10 pl-1" />}
-                                </button>
-                                <button onClick={() => changeExercise(1)} disabled={phase === 'done'} className="p-4 text-off-white/80 rounded-full hover:bg-black/20 disabled:opacity-30 transition-colors">
-                                    <NextIcon className="w-8 h-8" />
-                                </button>
-                            </div>
-                        </div>
-                    </footer>
-                </div>
+                {/* Bottom Controls */}
+                <footer className="flex flex-col items-center flex-shrink-0 gap-5 mb-2">
+                    <ProgressIndicator 
+                        workout={workout} 
+                        rounds={workout.rounds} 
+                        phase={phase} 
+                        currentRound={round} 
+                        currentExerciseIndex={exerciseIndex} 
+                        warmupStage={warmupStage} 
+                        cooldownStage={cooldownStage}
+                        settings={settings}
+                    />
+                    
+                    {/* Control Deck */}
+                    <div className="grid grid-cols-3 gap-4 w-full items-center pt-2">
+                        <button onClick={() => changeExercise(-1)} disabled={!canGoPrev} className="flex flex-col items-center justify-center py-4 rounded-2xl bg-gray-800/50 border border-white/5 hover:bg-gray-800 transition-all active:scale-95 disabled:opacity-30 group">
+                            <PrevIcon className="w-6 h-6 text-gray-400 group-hover:text-white transition-colors" />
+                        </button>
+                        
+                        <button 
+                            onClick={handleTogglePlayPause} 
+                            className={`h-20 rounded-3xl flex items-center justify-center border-2 transition-all active:scale-95 shadow-lg ${running ? 'border-gray-500 bg-white text-black hover:bg-gray-200' : 'border-accent bg-accent/10 text-accent hover:bg-accent/20 hover:shadow-[0_0_30px_rgba(74,222,128,0.3)]'}`}
+                        >
+                            {running ? <PauseIcon className="w-10 h-10" /> : <PlayIcon className="w-10 h-10 pl-1" />}
+                        </button>
+                        
+                        <button onClick={() => changeExercise(1)} disabled={phase === 'done'} className="flex flex-col items-center justify-center py-4 rounded-2xl bg-gray-800/50 border border-white/5 hover:bg-gray-800 transition-all active:scale-95 disabled:opacity-30 group">
+                            <NextIcon className="w-6 h-6 text-gray-400 group-hover:text-white transition-colors" />
+                        </button>
+                    </div>
+                </footer>
             </div>
             
             {numpadVisible && numpadExerciseIndex !== null && (

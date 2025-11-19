@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import type { Workout, Progress, CycleGroup, WorkoutItem } from '../types';
 import * as ProgressService from '../services/progressService';
-import { CheckIcon } from './icons';
+import { CheckIcon, TrophyIcon, ChevronDownIcon } from './icons';
 
 interface HistoryProps {
   workouts: Workout[];
@@ -108,82 +108,100 @@ export const History: React.FC<HistoryProps> = ({ workouts, progress, onSelectWo
   }
 
   return (
-    <div className="space-y-4">
-      {cycleGroups.map(cycle => (
-        <div key={cycle.name} className="bg-gray-dark rounded-xl overflow-hidden">
+    <div className="space-y-6 pb-safe">
+      {cycleGroups.map(cycle => {
+        const percentComplete = cycle.total > 0 ? Math.round((cycle.doneCount / cycle.total) * 100) : 0;
+        const isComplete = percentComplete === 100;
+
+        return (
+        <div key={cycle.name} className={`rounded-2xl border overflow-hidden transition-all duration-300 ${isComplete ? 'bg-green-900/20 border-green-500/30' : 'bg-gray-900/50 border-gray-800'}`}>
+          {/* Cycle Header */}
           <div
             onClick={() => toggleCycle(cycle.name)}
-            className="cursor-pointer p-4"
-            role="button"
-            aria-expanded={openCycles[cycle.name] ?? false}
-            tabIndex={0}
-            onKeyPress={(e) => (e.key === 'Enter' || e.key === ' ') && toggleCycle(cycle.name)}
+            className="cursor-pointer p-5 relative overflow-hidden group"
           >
-            <div className="flex justify-between items-center">
-              <span className="font-bold">{cycle.name}</span>
-              <div className="flex items-center gap-4">
-                  <div className="flex gap-2">
-                  <button onClick={(e) => { e.stopPropagation(); handleMarkCycleDone(cycle.name); }} className="text-xs bg-gray-light px-2 py-1 rounded">✓ all</button>
-                  <button onClick={(e) => { e.stopPropagation(); handleResetCycle(cycle.name); }} className="text-xs bg-gray-light px-2 py-1 rounded">↺</button>
-                  </div>
-                  <span className="text-xs text-gray-text">{cycle.doneCount}/{cycle.total} done</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+            
+            <div className="flex justify-between items-end mb-2 relative z-10">
+              <div>
+                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">History</h3>
+                  <span className="text-2xl font-black text-white tracking-tight uppercase">{cycle.name}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                  {isComplete && <TrophyIcon className="w-6 h-6 text-yellow-400 animate-pulse" />}
+                  <span className={`text-2xl font-bold ${isComplete ? 'text-accent' : 'text-gray-500'}`}>{percentComplete}%</span>
               </div>
             </div>
-            <div className="w-full bg-gray-light rounded-full h-1.5 mt-2">
+
+            {/* Progress Bar */}
+            <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden relative z-10">
               <div 
-                className="bg-accent h-1.5 rounded-full transition-all duration-500" 
-                style={{ width: cycle.total > 0 ? `${(cycle.doneCount / cycle.total) * 100}%` : '0%' }}>
+                className={`h-full rounded-full transition-all duration-1000 ease-out ${isComplete ? 'bg-gradient-to-r from-green-400 to-accent' : 'bg-accent'}`}
+                style={{ width: `${percentComplete}%` }}>
               </div>
             </div>
+
+             <div className="mt-4 flex justify-between items-center relative z-10">
+                  <div className="text-xs text-gray-500 font-mono">{cycle.doneCount} / {cycle.total} WORKOUTS COMPLETE</div>
+                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={(e) => { e.stopPropagation(); handleMarkCycleDone(cycle.name); }} className="text-[10px] bg-gray-800 hover:bg-gray-700 border border-gray-600 px-2 py-1 rounded uppercase tracking-wide">Complete All</button>
+                      <button onClick={(e) => { e.stopPropagation(); handleResetCycle(cycle.name); }} className="text-[10px] bg-gray-800 hover:bg-gray-700 border border-gray-600 px-2 py-1 rounded uppercase tracking-wide">Reset</button>
+                  </div>
+             </div>
           </div>
-          <div className={`transition-[max-height] duration-500 ease-in-out overflow-hidden ${openCycles[cycle.name] ? 'max-h-[1500px]' : 'max-h-0'}`}>
-            <div className="p-4 pt-0 space-y-3">
+
+          {/* Weeks Accordion */}
+          <div className={`transition-[max-height] duration-500 ease-in-out overflow-hidden ${openCycles[cycle.name] ? 'max-h-[2000px]' : 'max-h-0'}`}>
+            <div className="p-4 pt-0 space-y-4 border-t border-white/5">
               {cycle.weeks.map(week => {
                   const weekKey = `${cycle.name}|${week.name}`;
                   const isWeekOpen = openWeeks[weekKey] ?? false;
+                  const weekPercent = week.total > 0 ? (week.doneCount / week.total) * 100 : 0;
+                  
                   return (
-                    <div key={weekKey} className="bg-gray-light/30 rounded-lg overflow-hidden">
+                    <div key={weekKey} className="bg-black/40 rounded-xl border border-white/5 overflow-hidden">
                       <div
                         onClick={() => toggleWeek(weekKey)}
-                        className="cursor-pointer p-3"
-                        role="button"
-                        aria-expanded={isWeekOpen}
-                        tabIndex={0}
-                        onKeyPress={(e) => (e.key === 'Enter' || e.key === ' ') && toggleWeek(weekKey)}
+                        className="cursor-pointer p-4 flex items-center justify-between hover:bg-white/5 transition-colors"
                       >
-                        <div className="flex justify-between items-center">
-                          <div className="text-sm font-semibold text-gray-text">{week.name}</div>
-                          <div className="text-xs text-gray-text">{week.doneCount}/{week.total}</div>
+                        <div className="flex flex-col">
+                             <span className="text-sm font-bold text-gray-300">{week.name}</span>
+                             <div className="w-24 bg-gray-800 rounded-full h-1 mt-2">
+                                <div className="bg-accent h-1 rounded-full transition-all duration-500" style={{ width: `${weekPercent}%` }}></div>
+                             </div>
                         </div>
-                        <div className="w-full bg-gray-dark rounded-full h-1 mt-1">
-                            <div 
-                              className="bg-accent h-1 rounded-full transition-all duration-500" 
-                              style={{ width: week.total > 0 ? `${(week.doneCount / week.total) * 100}%` : '0%' }}>
-                            </div>
-                        </div>
+                         <ChevronDownIcon className={`w-5 h-5 text-gray-500 transition-transform duration-300 ${isWeekOpen ? 'rotate-180' : ''}`} />
                       </div>
-                      <div className={`transition-[max-height] duration-500 ease-in-out overflow-hidden ${isWeekOpen ? 'max-h-[500px]' : 'max-h-0'}`}>
-                        <div className="px-2 pb-2 space-y-1">
+
+                      <div className={`transition-[max-height] duration-300 ease-in-out overflow-hidden ${isWeekOpen ? 'max-h-[600px]' : 'max-h-0'}`}>
+                        <div className="px-2 pb-2 space-y-1 bg-black/20">
                           {week.items.map(item => {
                               const uid = ProgressService.getWorkoutUID(item.workout);
                               const pItem = progress[uid] || {};
                               const isSelected = selectedWorkoutIndex === item.index;
 
                               return (
-                                  <div key={item.index} className={`flex items-center gap-3 p-2 rounded-md transition-colors ${isSelected ? 'bg-accent/20' : 'hover:bg-gray-light/50'}`}>
+                                  <div key={item.index} className={`group flex items-center gap-3 p-2 rounded-lg transition-all ${isSelected ? 'bg-accent/10 border border-accent/20' : 'hover:bg-white/5 border border-transparent'}`}>
                                       <div 
                                           onClick={() => onSelectWorkout(item.index)} 
                                           className="flex-grow flex items-center gap-3 cursor-pointer"
                                       >
-                                          <img src={item.workout.exercises[0]?.image || `https://picsum.photos/seed/${item.index}/40/40`} alt={item.workout.day} className="w-10 h-10 rounded-md object-cover bg-gray-light flex-shrink-0" />
-                                          <span className="font-medium text-off-white">{item.workout.day}</span>
+                                          <div className="relative">
+                                            <img src={item.workout.exercises[0]?.image || `https://picsum.photos/seed/${item.index}/40/40`} alt={item.workout.day} className="w-12 h-12 rounded-lg object-cover bg-gray-800 flex-shrink-0 grayscale group-hover:grayscale-0 transition-all" />
+                                            {pItem.done && <div className="absolute inset-0 bg-green-500/30 rounded-lg flex items-center justify-center"><CheckIcon className="w-6 h-6 text-white drop-shadow-md" /></div>}
+                                          </div>
+                                          <div className="flex flex-col">
+                                              <span className={`font-bold text-sm ${pItem.done ? 'text-gray-400 line-through decoration-accent' : 'text-off-white'}`}>{item.workout.day}</span>
+                                              <span className="text-[10px] text-gray-500 uppercase tracking-wide">{item.workout.exercises.length} Exercises • {item.workout.timing}</span>
+                                          </div>
                                       </div>
+                                      
                                       <button 
                                           onClick={() => handleMarkDone(uid)} 
-                                          className={`w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors ${pItem.done ? 'bg-green-500 border-green-500' : 'border-gray-light hover:border-gray-text'}`}
-                                          aria-label={`Mark ${item.workout.day} as ${pItem.done ? 'not done' : 'done'}`}
+                                          className={`w-8 h-8 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all active:scale-90 ${pItem.done ? 'bg-accent border-accent shadow-[0_0_10px_rgba(74,222,128,0.4)]' : 'border-gray-600 hover:border-gray-400'}`}
+                                          aria-label={`Mark done`}
                                       >
-                                          {pItem.done && <CheckIcon className="w-4 h-4 text-white" />}
+                                          {pItem.done && <CheckIcon className="w-4 h-4 text-black" />}
                                       </button>
                                   </div>
                               );
@@ -196,7 +214,7 @@ export const History: React.FC<HistoryProps> = ({ workouts, progress, onSelectWo
             </div>
           </div>
         </div>
-      ))}
+      )})}
     </div>
   );
 };

@@ -14,8 +14,10 @@ export type RawWorkout = {
 
 export interface Exercise {
   name: string;
-  image: string;
+  image: string; // Thumbnail for videos, or the image itself
+  video?: string; // Data URL for the video
   description: string[];
+  youtubeId?: string; // YouTube video ID
 }
 
 export type Workout = Omit<RawWorkout, 'warmUp' | 'exercises' | 'coolDown' | 'rounds' | 'preWarmUp'> & {
@@ -31,11 +33,24 @@ export type Workout = Omit<RawWorkout, 'warmUp' | 'exercises' | 'coolDown' | 'ro
 };
 
 
-export type AppView = 'home' | 'workout' | 'finished' | 'repTracking' | 'profile' | 'tutorial' | 'chooseCycle' | 'settings' | 'welcome' | 'getStarted' | 'camera' | 'imageCropper';
+export type AppView = 'home' | 'workout' | 'finished' | 'repTracking' | 'profile' | 'tutorial' | 'chooseCycle' | 'settings' | 'onboarding' | 'camera' | 'imageCropper' | 'exerciseEditor' | 'videoRecorder' | 'thumbnailSelector';
+
+export interface ProfileStats {
+  totalXp: number;
+  level: number;
+  currentStreak: number;
+  bestStreak: number;
+  lastWorkoutDate: string | null; // ISO Date string
+  workoutsCompleted: number;
+}
+
+export type DifficultyLevel = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
 
 export interface Profile {
   name: string;
   picture?: string;
+  difficulty: DifficultyLevel;
+  stats?: ProfileStats;
 }
 
 export interface Settings {
