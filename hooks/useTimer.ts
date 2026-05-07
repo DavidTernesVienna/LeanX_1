@@ -6,7 +6,6 @@ interface UseTimerProps {
     workout: Workout;
     settings: Settings;
     sessionReps: (number | null)[][];
-    // FIX: Imported Dispatch and SetStateAction from 'react' to resolve namespace errors.
     setSessionReps: Dispatch<SetStateAction<(number | null)[][]>>;
     onFinish: () => void;
     onNumpadOpen: (exerciseIndex: number) => void;
@@ -26,6 +25,8 @@ export const useTimer = ({ workout, settings, sessionReps, setSessionReps, onFin
     const [warmupStage, setWarmupStage] = useState(0); // 0:pre-warmup, 1-3: round 1, 4-6: round 2
     const [cooldownStage, setCooldownStage] = useState(1); // 1-2: cooldown rounds
 
+    // Refs for Drift Correction
+    const lastTickRef = useRef<number>(0);
     const snapshotRef = useRef<TimerSnapshot | null>(null);
     const audioCtxRef = useRef<AudioContext | null>(null);
 
@@ -85,26 +86,71 @@ export const useTimer = ({ workout, settings, sessionReps, setSessionReps, onFin
             }
             ProgressService.clearInProgress(uid);
         }
-        // Always start paused, requiring user interaction to play
+        // Always start paused
         setRunning(false); 
     };
     
     useEffect(() => {
         resetWorkoutState(false);
-    }, [workout.id]); // Reset when workout changes
+    }, [workout.id]);
+
+    // Handle visibility change (background/foreground) to correct timer drift
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                // App went to background
+                lastTickRef.current = Date.now();
+            } else {
+                // App came back
+                if (running && lastTickRef.current > 0) {
+                    const now = Date.now();
+                    const deltaMs = now - lastTickRef.current;
+                    const deltaSeconds = Math.floor(deltaMs / 1000);
+                    
+                    if (deltaSeconds > 0) {
+                        setSeconds(prev => {
+                            const newVal = prev - deltaSeconds;
+                            // If we overslept the interval, force it to 0 so the main loop handles the transition immediately
+                            return newVal < 0 ? 0 : newVal; 
+                        });
+                    }
+                    lastTickRef.current = now;
+                }
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, [running]);
 
     // Main timer tick effect
     useEffect(() => {
         if (!running) {
+            lastTickRef.current = 0;
             return;
         }
 
+        // Initialize tick ref if starting
+        if (lastTickRef.current === 0) {
+            lastTickRef.current = Date.now();
+        }
+
         const interval = setInterval(() => {
+            const now = Date.now();
+            // Calculate actual elapsed time since last tick to handle minor drifts or throttles
+            const deltaMs = now - lastTickRef.current;
+            
+            // Only update if at least 1 second has technically passed (or we force it)
+            // But for simple React state, let's stick to the 1s interval logic but correct using the ref
+            
+            // Reset reference for next tick
+            lastTickRef.current = now;
+
             setSeconds(s => {
                 const newSeconds = s - 1;
                 
                  if (settings.audioCues) {
-                    // Mid-interval beep for 30s warmup sets to indicate side change
+                    // Mid-interval beep for 30s warmup sets
                     if (phase === 'warmup' && warmupStage > 0 && newSeconds === 15) {
                         playSound(0.15, 660);
                         setTimeout(() => playSound(0.15, 660), 200);
@@ -112,11 +158,11 @@ export const useTimer = ({ workout, settings, sessionReps, setSessionReps, onFin
 
                     // End of interval countdown
                     if (phase === 'work' || phase === 'rest' || phase === 'warmup' || phase === 'cooldown' || phase === 'warmup_rest' || phase.startsWith('getready')) {
-                        if (newSeconds === 2) { // 3 seconds left
+                        if (newSeconds === 2) { 
                             playSound(0.2, 880);
-                        } else if (newSeconds === 1) { // 2 seconds left
+                        } else if (newSeconds === 1) { 
                             playSound(0.2, 880);
-                        } else if (newSeconds === 0) { // 1 second left
+                        } else if (newSeconds === 0) { 
                             playSound(0.5, 440);
                         }
                     }
@@ -133,32 +179,27 @@ export const useTimer = ({ workout, settings, sessionReps, setSessionReps, onFin
                     setPhase('warmup');
                     const isSpecialPreWarmup = workout.preWarmUp.name === 'Standing March' || workout.preWarmUp.name === 'Jumping Jacks';
                     const preWarmupDuration = isSpecialPreWarmup ? 55 : 30;
-                    setSeconds(preWarmupDuration);
-                    setWarmupStage(0); // Start with pre-warmup stage
+                    setWarmupStage(0); 
                     return preWarmupDuration;
                 }
                 if (phase === 'warmup') {
                     setPhase('warmup_rest');
-                    setSeconds(5);
                     return 5;
                 }
                 if (phase === 'warmup_rest') {
                     const nextWarmupStage = warmupStage + 1;
-                    if (nextWarmupStage >= TOTAL_WARMUP_STAGES) { // e.g. 7 stages (0-6)
+                    if (nextWarmupStage >= TOTAL_WARMUP_STAGES) { 
                         setPhase('getready_work');
-                        setSeconds(GET_READY_DURATION);
                         return GET_READY_DURATION;
                     }
                     setWarmupStage(nextWarmupStage);
                     setPhase('warmup');
-                    setSeconds(30); // All subsequent warmups are 30s
                     return 30;
                 }
 
                 // Main Workout Logic
                 if (phase === 'getready_work') {
                     setPhase('work');
-                    setSeconds(workout.work);
                     return workout.work;
                 }
                 if (phase === 'work') {
@@ -166,24 +207,22 @@ export const useTimer = ({ workout, settings, sessionReps, setSessionReps, onFin
                         onNumpadOpen(exerciseIndex);
                         if (settings.pauseOnRepCount) {
                             setRunning(false);
+                            lastTickRef.current = 0; // Reset tick ref on auto-pause
                         }
                     }
 
                     if (workout.rest > 0) {
                         setPhase('rest');
-                        setSeconds(workout.rest);
                         return workout.rest;
                     }
-                    // No rest, fall through to next exercise
+                    // No rest, fall through
                 }
                 
-                // Transition from WORK (if no rest) or REST
                 if (phase === 'work' || phase === 'rest') {
                     const nextExerciseIndex = exerciseIndex + 1;
                     if (nextExerciseIndex < workout.exercises.length) {
                         setExerciseIndex(nextExerciseIndex);
                         setPhase('work');
-                        setSeconds(workout.work);
                         return workout.work;
                     }
                     
@@ -192,14 +231,12 @@ export const useTimer = ({ workout, settings, sessionReps, setSessionReps, onFin
                         setRound(nextRound);
                         setExerciseIndex(0);
                         setPhase('work');
-                        setSeconds(workout.work);
                         return workout.work;
                     }
                     
                     // All rounds done
                     if (settings.enableCooldown) {
                         setPhase('getready_cooldown');
-                        setSeconds(GET_READY_DURATION);
                         return GET_READY_DURATION;
                     } else {
                         setPhase('done');
@@ -211,7 +248,6 @@ export const useTimer = ({ workout, settings, sessionReps, setSessionReps, onFin
                 // Cooldown Logic
                 if (phase === 'getready_cooldown') {
                     setPhase('cooldown');
-                    setSeconds(30);
                     setCooldownStage(1);
                     return 30;
                 }
@@ -223,11 +259,10 @@ export const useTimer = ({ workout, settings, sessionReps, setSessionReps, onFin
                         return 0;
                     }
                     setCooldownStage(nextCooldownStage);
-                    setSeconds(30);
                     return 30;
                 }
 
-                return 0; // Should not be reached
+                return 0; 
             });
         }, 1000);
 
@@ -299,7 +334,7 @@ export const useTimer = ({ workout, settings, sessionReps, setSessionReps, onFin
                 headerTitle = "Get Ready";
                 break;
             case 'work':
-            case 'rest':
+            case 'rest': {
                 displayExercise = workout.exercises[exerciseIndex];
                 headerTitle = phase === 'rest' ? "Rest" : "Work";
                 const nextExIdx = exerciseIndex + 1;
@@ -311,6 +346,7 @@ export const useTimer = ({ workout, settings, sessionReps, setSessionReps, onFin
                     nextUpExercise = workout.coolDown;
                 }
                 break;
+            }
              case 'getready_cooldown':
                 displayExercise = workout.coolDown;
                 headerTitle = "Get Ready";
@@ -330,11 +366,16 @@ export const useTimer = ({ workout, settings, sessionReps, setSessionReps, onFin
 
 
     const togglePlayPause = useCallback(() => {
-        setRunning(r => !r);
+        setRunning(r => {
+            const next = !r;
+            if (!next) lastTickRef.current = 0; 
+            return next;
+        });
     }, []);
 
     const changeExercise = useCallback((direction: 1 | -1) => {
         setRunning(false);
+        lastTickRef.current = 0;
     
         // --- FORWARD ---
         if (direction === 1) {

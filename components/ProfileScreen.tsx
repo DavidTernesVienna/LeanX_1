@@ -95,12 +95,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profile, progress,
          <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
 
          <div className="relative z-10 flex flex-col items-center">
-            <div className="relative w-28 h-28 mb-4">
-                 <div className="w-28 h-28 rounded-full bg-gray-700 flex items-center justify-center border-4 border-gray-600 shadow-lg overflow-hidden">
+            <div className="relative w-24 h-24 mb-4">
+                 <div className="w-24 h-24 rounded-full bg-gray-700 flex items-center justify-center border-4 border-gray-600 shadow-lg overflow-hidden">
                     {profile.picture ? (
-                        <img src={profile.picture} alt="Profile" className="w-full h-full object-cover" />
+                        <img src={profile.picture} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     ) : (
-                        <UserIcon className="w-16 h-16 text-gray-400" />
+                        <UserIcon className="w-12 h-12 text-gray-400" />
                     )}
                 </div>
                 <button 
@@ -123,7 +123,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profile, progress,
                             value={editingName}
                             onChange={(e) => setEditingName(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && handleSaveName()}
-                            className="bg-black/40 text-off-white text-center text-2xl font-bold p-1 rounded-md border border-gray-600 w-48 focus:border-accent outline-none"
+                            className="bg-black/40 text-off-white text-center text-xl font-bold p-1 rounded-md border border-gray-600 w-48 focus:border-accent outline-none"
                             autoFocus
                             onBlur={handleSaveName}
                         />
@@ -133,7 +133,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profile, progress,
                     </div>
                 ) : (
                     <button onClick={() => setIsEditingName(true)} className="flex items-center gap-2 group">
-                        <h2 className="text-2xl font-bold text-white tracking-tight group-hover:text-accent transition-colors">{profile.name}</h2>
+                        <h2 className="text-xl font-bold text-white tracking-tight group-hover:text-accent transition-colors">{profile.name}</h2>
                          <PenIcon className="w-4 h-4 text-gray-500 group-hover:text-accent transition-colors opacity-0 group-hover:opacity-100" />
                     </button>
                 )}
@@ -154,25 +154,25 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ profile, progress,
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-3 mb-6">
-          <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700 flex flex-col items-center justify-center gap-1 shadow-lg">
-              <TrophyIcon className="w-8 h-8 text-yellow-400 mb-1" />
-              <span className="text-2xl font-bold text-white">{profile.stats?.workoutsCompleted || 0}</span>
-              <span className="text-xs text-gray-400 uppercase font-bold tracking-wider">Completed</span>
+          <div className="bg-gray-800/50 p-3 rounded-xl border border-gray-700 flex flex-col items-center justify-center gap-1 shadow-lg">
+              <TrophyIcon className="w-6 h-6 text-yellow-400 mb-1" />
+              <span className="text-xl font-bold text-white">{profile.stats?.workoutsCompleted || 0}</span>
+              <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Completed</span>
           </div>
-          <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700 flex flex-col items-center justify-center gap-1 shadow-lg">
-              <FireIcon className="w-8 h-8 text-orange-500 mb-1" />
-              <span className="text-2xl font-bold text-white">{profile.stats?.currentStreak || 0}</span>
-              <span className="text-xs text-gray-400 uppercase font-bold tracking-wider">Day Streak</span>
+          <div className="bg-gray-800/50 p-3 rounded-xl border border-gray-700 flex flex-col items-center justify-center gap-1 shadow-lg">
+              <FireIcon className="w-6 h-6 text-orange-500 mb-1" />
+              <span className="text-xl font-bold text-white">{profile.stats?.currentStreak || 0}</span>
+              <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Day Streak</span>
           </div>
-           <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700 flex flex-col items-center justify-center gap-1 shadow-lg col-span-2 flex-row justify-around">
+           <div className="bg-gray-800/50 p-3 rounded-xl border border-gray-700 flex flex-col items-center justify-center gap-1 shadow-lg col-span-2 flex-row justify-around">
                <div className="flex flex-col items-center">
-                  <span className="text-lg font-bold text-white">{profile.stats?.bestStreak || 0}</span>
-                  <span className="text-xs text-gray-400 uppercase tracking-wider">Best Streak</span>
+                  <span className="text-base font-bold text-white">{profile.stats?.bestStreak || 0}</span>
+                  <span className="text-[10px] text-gray-400 uppercase tracking-wider">Best Streak</span>
                </div>
-               <div className="h-8 w-[1px] bg-gray-700"></div>
+               <div className="h-6 w-[1px] bg-gray-700"></div>
                 <div className="flex flex-col items-center">
-                  <span className="text-lg font-bold text-white">{profile.stats?.totalXp || 0}</span>
-                  <span className="text-xs text-gray-400 uppercase tracking-wider">Total XP</span>
+                  <span className="text-base font-bold text-white">{profile.stats?.totalXp || 0}</span>
+                  <span className="text-[10px] text-gray-400 uppercase tracking-wider">Total XP</span>
                </div>
           </div>
       </div>

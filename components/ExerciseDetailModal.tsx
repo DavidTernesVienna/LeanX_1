@@ -42,7 +42,7 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({ exerci
                   loop 
               />
           ) : (
-              <img src={exercise.image} alt={exercise.name} className="w-full h-full object-cover" />
+              <img src={exercise.image} alt={exercise.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           )}
         </div>
 

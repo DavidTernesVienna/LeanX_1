@@ -79,11 +79,11 @@ export const FinishedScreen: React.FC<FinishedScreenProps> = ({ onLogReps, onCon
       <div className="relative z-10 w-full max-w-sm">
           
           {/* Victory Header */}
-          <div className="mb-8 animate-fade-in">
-              <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-[0_0_30px_rgba(74,222,128,0.5)]">
-                  <CheckIcon className="w-10 h-10 text-white" />
+          <div className="mb-6 animate-fade-in">
+              <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-[0_0_30px_rgba(74,222,128,0.5)]">
+                  <CheckIcon className="w-8 h-8 text-white" />
               </div>
-              <h1 className="text-4xl font-black text-white italic tracking-wider uppercase">Workout<br/><span className="text-accent text-5xl">Crushed!</span></h1>
+              <h1 className="text-3xl font-black text-white italic tracking-wider uppercase">Workout<br/><span className="text-accent text-4xl">Crushed!</span></h1>
           </div>
 
           {/* Stats Card */}
@@ -113,16 +113,16 @@ export const FinishedScreen: React.FC<FinishedScreenProps> = ({ onLogReps, onCon
           </div>
 
           {/* Actions */}
-          <div className="space-y-4 animate-[fade-in_0.5s_ease-out_0.6s_both]">
+          <div className="space-y-3 animate-[fade-in_0.5s_ease-out_0.6s_both]">
             <button
               onClick={onLogReps}
-              className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-xl text-lg transition-all active:scale-95 border border-gray-600"
+              className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 rounded-xl text-lg transition-all active:scale-95 border border-gray-600"
             >
               Log Reps
             </button>
             <button
               onClick={onContinue}
-              className="w-full bg-accent hover:bg-green-400 text-black font-black py-4 rounded-xl text-lg transition-all active:scale-95 shadow-[0_0_20px_rgba(74,222,128,0.3)]"
+              className="w-full bg-accent hover:bg-green-400 text-black font-black py-3 rounded-xl text-lg transition-all active:scale-95 shadow-[0_0_20px_rgba(74,222,128,0.3)]"
             >
               FINISH
             </button>

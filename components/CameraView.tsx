@@ -128,7 +128,7 @@ export const CameraView: React.FC<CameraViewProps> = ({ onPictureTaken, onCancel
     if (capturedImage) {
         return (
             <div className="fixed inset-0 bg-black flex flex-col items-center justify-center animate-fade-in z-50">
-                <img src={capturedImage} alt="Captured" className="absolute top-0 left-0 w-full h-full object-contain" />
+                <img src={capturedImage} alt="Captured" className="absolute top-0 left-0 w-full h-full object-contain" referrerPolicy="no-referrer" />
                 
                 <div className="absolute bottom-8 left-0 right-0 flex justify-center items-center gap-6 z-10 p-4">
                     <button 
@@ -211,4 +211,14 @@ export const CameraView: React.FC<CameraViewProps> = ({ onPictureTaken, onCancel
                 <button
                     onClick={handleSwitchCamera}
                     disabled={isLoading || !!error}
-                    className="w-14 h-14 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all active:scale-95 disabled
+                    className="w-14 h-14 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-all active:scale-95 disabled:opacity-50"
+                    aria-label="Switch camera"
+                >
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    );
+};

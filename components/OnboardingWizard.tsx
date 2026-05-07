@@ -5,9 +5,10 @@ import { UserIcon, CameraIcon, CheckIcon, StarIcon } from './icons';
 
 interface OnboardingWizardProps {
   onComplete: (profile: Profile) => void;
-  onTakePhoto: () => void;
+  onTakePhoto: (currentName: string) => void;
   onFromGallery: () => void;
   tempPicture: string | null;
+  initialName: string;
 }
 
 const DifficultyStars: React.FC<{ count: number, color: string }> = ({ count, color }) => (
@@ -18,19 +19,50 @@ const DifficultyStars: React.FC<{ count: number, color: string }> = ({ count, co
     </div>
 );
 
-export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onTakePhoto, onFromGallery, tempPicture }) => {
+export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onTakePhoto, onFromGallery, tempPicture, initialName }) => {
   // Initialize step based on whether we are returning with a picture
-  const [step, setStep] = useState<'welcome' | 'identity' | 'difficulty' | 'processing'>(
-      tempPicture ? 'identity' : 'welcome'
+  // Flow: welcome -> name -> photo -> difficulty -> processing
+  const [step, setStep] = useState<'welcome' | 'name' | 'photo' | 'difficulty' | 'processing'>(
+      tempPicture ? 'photo' : 'welcome'
   );
-  const [name, setName] = useState('');
+  const [name, setName] = useState(initialName || '');
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('Beginner');
+  const [isExitingWelcome, setIsExitingWelcome] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
   
-  // Identity Step
-  const handleIdentityNext = () => {
+  const handleStart = () => {
+      setIsExitingWelcome(true);
+      setTimeout(() => {
+          setStep('name');
+          setIsExitingWelcome(false);
+      }, 1000);
+  };
+
+  const handlePressStart = () => {
+      setIsPressed(true);
+  };
+
+  const handlePressEnd = () => {
+      if (isPressed) {
+          setIsPressed(false);
+          handleStart();
+      }
+  };
+
+  const handlePressCancel = () => {
+      setIsPressed(false);
+  };
+
+  // Name Step
+  const handleNameNext = () => {
     if (name.trim()) {
-      setStep('difficulty');
+      setStep('photo');
     }
+  };
+
+  // Photo Step
+  const handlePhotoNext = () => {
+      setStep('difficulty');
   };
 
   const handleDifficultySelect = (level: DifficultyLevel) => {
@@ -94,32 +126,45 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
 
   if (step === 'welcome') {
       return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-black text-center space-y-8 animate-fade-in">
+        <div className={`min-h-screen flex flex-col items-center justify-center p-6 bg-black text-center space-y-12 transition-all duration-1000 ease-out ${isExitingWelcome ? 'opacity-0 scale-110' : 'opacity-100 scale-100'}`}>
              <div className="space-y-2">
                 <h1 className="text-5xl font-black italic tracking-tighter">LEAN<span className="text-accent">X</span></h1>
                 <p className="text-gray-500 text-sm uppercase tracking-[0.2em]">Interval Training App</p>
              </div>
              
              <div className="relative w-64 h-64 mx-auto flex items-center justify-center">
+                  {/* Wave Animations */}
+                  <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-accent rounded-full opacity-50 pointer-events-none transition-all duration-1000 ease-out z-0 ${isExitingWelcome ? 'scale-[30] opacity-0' : 'scale-100'}`} />
+                  <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-white rounded-full opacity-30 pointer-events-none transition-all duration-700 ease-out z-0 ${isExitingWelcome ? 'scale-[25] opacity-0' : 'scale-100'}`} />
+
                   <div className="absolute inset-0 border-2 border-dashed border-gray-800 rounded-full animate-[spin_10s_linear_infinite] pointer-events-none"></div>
                   <div className="absolute inset-4 border border-gray-700 rounded-full pointer-events-none"></div>
+                  
                   <button 
-                    onClick={() => setStep('identity')}
-                    className="relative z-10 w-40 h-40 bg-accent text-black rounded-full font-black text-2xl uppercase tracking-widest hover:scale-110 transition-transform shadow-[0_0_40px_rgba(74,222,128,0.4)] flex flex-col items-center justify-center pointer-events-auto"
+                    onMouseDown={handlePressStart}
+                    onMouseUp={handlePressEnd}
+                    onMouseLeave={handlePressCancel}
+                    onTouchStart={handlePressStart}
+                    onTouchEnd={handlePressEnd}
+                    className={`relative z-10 w-40 h-40 rounded-full font-black uppercase tracking-tighter 
+                    flex items-center justify-center pointer-events-auto group
+                    transition-all duration-150 ease-out
+                    bg-gradient-to-b from-green-400 to-green-600
+                    text-black
+                    ${isPressed 
+                        ? 'shadow-[inset_0_6px_10px_rgba(0,0,0,0.4)] translate-y-[10px]' 
+                        : 'shadow-[0_10px_0_#14532d,0_15px_20px_rgba(0,0,0,0.4),inset_0_2px_0_rgba(255,255,255,0.4)] translate-y-0 hover:brightness-110'
+                    }`}
                   >
-                      <span>GET</span>
-                      <span>STARTED</span>
+                      <span className={`text-4xl pt-1 transition-transform duration-150 ${isPressed ? 'scale-95 opacity-80' : ''}`}>START</span>
                   </button>
              </div>
-             
-             <p className="text-xs text-gray-600 font-mono max-w-xs mx-auto">
-                 Welcome. Let's set up your profile to get started.
-             </p>
         </div>
       );
   }
 
-  if (step === 'identity') {
+  // --- STEP 1: NAME ---
+  if (step === 'name') {
       return (
           <div className="min-h-screen flex flex-col p-6 bg-black animate-fade-in">
               <header className="py-4 border-b border-gray-800 mb-8">
@@ -128,9 +173,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
 
               <main className="flex-grow flex flex-col items-center space-y-8">
                   
-                  {/* The Access Pass Card Visualization */}
+                  {/* Access Pass Visualization */}
                   <div className="w-full max-w-sm aspect-[1.58/1] bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border border-white/10 shadow-2xl relative overflow-hidden p-6 flex flex-col justify-between">
-                      {/* Card Decoration */}
                       <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
                       
                       <div className="flex justify-between items-start">
@@ -138,9 +182,82 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
                               <div className="text-xs font-bold text-gray-500 uppercase tracking-widest">ACCESS PASS</div>
                               <div className="text-2xl font-black text-white italic tracking-tighter">LEAN<span className="text-accent">X</span></div>
                           </div>
-                          <div className="w-24 h-24 bg-gray-950 rounded-lg border border-gray-700 overflow-hidden flex items-center justify-center relative shadow-inner">
+                          <div className="w-24 h-24 bg-gray-950 rounded-lg border border-gray-700 overflow-hidden flex items-center justify-center relative shadow-inner opacity-50">
+                                <UserIcon className="w-10 h-10 text-gray-600" />
+                          </div>
+                      </div>
+
+                      <div className="space-y-4">
+                          <div>
+                              <div className="text-[10px] text-gray-500 uppercase font-bold mb-0.5">User Name</div>
+                              <div className="text-xl font-bold text-white font-mono truncate">
+                                  {name || "UNKNOWN"}
+                                  <span className="animate-pulse">_</span>
+                              </div>
+                          </div>
+                          <div className="flex gap-4 opacity-50">
+                              <div>
+                                  <div className="text-[10px] text-gray-500 uppercase font-bold">Level</div>
+                                  <div className="text-sm font-bold text-accent">01</div>
+                              </div>
+                              <div>
+                                  <div className="text-[10px] text-gray-500 uppercase font-bold">Status</div>
+                                  <div className="text-sm font-bold text-gray-300">PENDING</div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+
+                  <div className="w-full max-w-xs space-y-4">
+                      <div className="text-center">
+                          <label className="text-gray-500 text-sm uppercase tracking-widest font-bold mb-2 block">Enter Your Codename</label>
+                          <input
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="NAME"
+                            className="w-full bg-transparent border-b-2 border-gray-800 py-3 text-center text-white font-black text-3xl focus:border-accent focus:outline-none transition-colors placeholder-gray-800 uppercase"
+                            autoFocus
+                        />
+                      </div>
+                  </div>
+              </main>
+
+              <footer className="py-4">
+                  <button
+                      onClick={handleNameNext}
+                      disabled={!name.trim()}
+                      className="w-full bg-white text-black font-bold py-4 rounded-xl uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+                  >
+                      Next Step
+                  </button>
+              </footer>
+          </div>
+      );
+  }
+
+  // --- STEP 2: PHOTO ---
+  if (step === 'photo') {
+      return (
+          <div className="min-h-screen flex flex-col p-6 bg-black animate-fade-in">
+              <header className="py-4 border-b border-gray-800 mb-8">
+                  <h2 className="text-xs font-bold text-accent uppercase tracking-widest">Step 2 // Photo ID</h2>
+              </header>
+
+              <main className="flex-grow flex flex-col items-center space-y-8">
+                  
+                  {/* Access Pass Visualization */}
+                  <div className="w-full max-w-sm aspect-[1.58/1] bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border border-white/10 shadow-2xl relative overflow-hidden p-6 flex flex-col justify-between">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                      
+                      <div className="flex justify-between items-start">
+                          <div className="space-y-1">
+                              <div className="text-xs font-bold text-gray-500 uppercase tracking-widest">ACCESS PASS</div>
+                              <div className="text-2xl font-black text-white italic tracking-tighter">LEAN<span className="text-accent">X</span></div>
+                          </div>
+                          <div className={`w-24 h-24 bg-gray-950 rounded-lg border overflow-hidden flex items-center justify-center relative shadow-inner ${tempPicture ? 'border-accent' : 'border-gray-700'}`}>
                                 {tempPicture ? (
-                                    <img src={tempPicture} alt="Profile" className="w-full h-full object-cover" />
+                                    <img src={tempPicture} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                 ) : (
                                     <UserIcon className="w-10 h-10 text-gray-600" />
                                 )}
@@ -151,8 +268,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
                           <div>
                               <div className="text-[10px] text-gray-500 uppercase font-bold mb-0.5">User Name</div>
                               <div className="text-xl font-bold text-white font-mono truncate">
-                                  {name || "UNKNOWN"}
-                                  <span className="animate-pulse">_</span>
+                                  {name}
                               </div>
                           </div>
                           <div className="flex gap-4">
@@ -169,44 +285,38 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
                   </div>
 
                   <div className="w-full max-w-xs space-y-4">
+                      <p className="text-center text-gray-400 text-sm">Upload a photo for your ID card.</p>
                       <div className="flex justify-center gap-4">
-                           <button onClick={onTakePhoto} className="px-4 py-2 bg-gray-900 rounded-lg border border-gray-700 flex items-center gap-2 text-xs font-bold uppercase text-gray-300 hover:bg-gray-800 transition-colors">
-                               <CameraIcon className="w-4 h-4" /> Take Photo
+                           <button onClick={() => onTakePhoto(name)} className="flex-1 py-4 bg-gray-900 rounded-xl border border-gray-700 flex flex-col items-center justify-center gap-2 text-xs font-bold uppercase text-gray-300 hover:bg-gray-800 hover:border-accent transition-all active:scale-95 group">
+                               <CameraIcon className="w-6 h-6 text-gray-500 group-hover:text-white transition-colors" /> 
+                               Take Photo
                            </button>
-                           <button onClick={onFromGallery} className="px-4 py-2 bg-gray-900 rounded-lg border border-gray-700 flex items-center gap-2 text-xs font-bold uppercase text-gray-300 hover:bg-gray-800 transition-colors">
-                               <span className="text-lg leading-none">+</span> Upload
+                           <button onClick={onFromGallery} className="flex-1 py-4 bg-gray-900 rounded-xl border border-gray-700 flex flex-col items-center justify-center gap-2 text-xs font-bold uppercase text-gray-300 hover:bg-gray-800 hover:border-accent transition-all active:scale-95 group">
+                               <div className="w-6 h-6 flex items-center justify-center text-xl font-light text-gray-500 group-hover:text-white transition-colors">+</div>
+                               Upload
                            </button>
                       </div>
-                      
-                      <input
-                          type="text"
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          placeholder="Enter Name"
-                          className="w-full bg-transparent border-b border-gray-700 py-2 text-center text-white font-bold text-lg focus:border-accent focus:outline-none transition-colors placeholder-gray-700"
-                          autoFocus
-                      />
                   </div>
               </main>
 
               <footer className="py-4">
                   <button
-                      onClick={handleIdentityNext}
-                      disabled={!name.trim()}
-                      className="w-full bg-white text-black font-bold py-4 rounded-xl uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+                      onClick={handlePhotoNext}
+                      className="w-full bg-white text-black font-bold py-4 rounded-xl uppercase tracking-widest hover:bg-gray-200 transition-colors"
                   >
-                      Next Step
+                      {tempPicture ? "Next Step" : "Skip Photo"}
                   </button>
               </footer>
           </div>
       );
   }
 
+  // --- STEP 3: DIFFICULTY ---
   if (step === 'difficulty') {
       return (
         <div className="min-h-screen flex flex-col p-6 bg-black animate-fade-in">
              <header className="py-4 border-b border-gray-800 mb-6">
-                  <h2 className="text-xs font-bold text-accent uppercase tracking-widest">Step 2 // Fitness Level</h2>
+                  <h2 className="text-xs font-bold text-accent uppercase tracking-widest">Step 3 // Fitness Level</h2>
               </header>
 
               <main className="flex-grow overflow-y-auto space-y-4 pb-4">

@@ -1,8 +1,11 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { App as CapacitorApp } from '@capacitor/app';
 import { BUILT_IN_DATA, WORKOUT_NAMES, CRAWLING_WARMUP_NAMES, SIDELYING_WARMUP_NAMES } from './constants';
 import * as ProgressService from './services/progressService';
 import { getImageForExercise } from './services/exerciseImageService';
+import { getYoutubeIdForExercise } from './services/exerciseVideoService';
+import { loadAssetIndex } from './services/assetIndex';
 import { parseTiming, assertWorkout } from './timing';
 import type { Workout, Progress, AppView, Profile, Settings, ProgressItem, Exercise } from './types';
 import { History } from './components/History';
@@ -21,7 +24,7 @@ import { ExerciseEditorScreen } from './components/ExerciseEditorScreen';
 import { VideoRecorder } from './components/VideoRecorder';
 import { ThumbnailSelector } from './components/ThumbnailSelector';
 import { OnboardingWizard } from './components/OnboardingWizard';
-
+import { VideoMatcher } from './components/VideoMatcher';
 
 const generateVideoThumbnail = (videoSrc: string): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -46,6 +49,7 @@ const generateVideoThumbnail = (videoSrc: string): Promise<string> => {
     };
 
     const handleLoadedData = () => {
+      // Seek to 1 second or half duration if shorter
       video.currentTime = Math.min(1, video.duration / 2);
     };
 
@@ -65,6 +69,7 @@ const generateVideoThumbnail = (videoSrc: string): Promise<string> => {
     video.addEventListener('seeked', handleSeeked);
     video.addEventListener('error', handleError);
 
+    // Safety timeout
     setTimeout(() => {
         if (video.readyState >= 2) { 
             handleLoadedData();
@@ -73,21 +78,21 @@ const generateVideoThumbnail = (videoSrc: string): Promise<string> => {
   });
 };
 
-
 const App: React.FC = () => {
     const [workouts, setWorkouts] = useState<Workout[]>([]);
     const [progress, setProgress] = useState<Progress>(() => ProgressService.loadProgress());
     const [profile, setProfile] = useState<Profile | null>(() => ProgressService.loadProfile());
     const [settings, setSettings] = useState<Settings>(() => ProgressService.loadSettings());
     const [customExercises, setCustomExercises] = useState<Exercise[]>(() => ProgressService.loadCustomExercises());
+    const [availableVideos, setAvailableVideos] = useState<string[]>([]);
     const [sessionReps, setSessionReps] = useState<(number | null)[][]>([]);
     const [view, setView] = useState<AppView>(() => ProgressService.loadProfile() ? 'home' : 'onboarding');
     const [selectedWorkoutIndex, setSelectedWorkoutIndex] = useState<number | null>(null);
     const [modalExercise, setModalExercise] = useState<Exercise | null>(null);
-    // Temporary state for onboarding profile creation
-    const [newProfilePicture, setNewProfilePicture] = useState<string | null>(null);
     
-    // Gamification State for Finish Screen
+    const [newProfilePicture, setNewProfilePicture] = useState<string | null>(null);
+    const [tempOnboardingName, setTempOnboardingName] = useState<string>('');
+    
     const [lastEarnedXp, setLastEarnedXp] = useState(0);
     const [isLevelUpEvent, setIsLevelUpEvent] = useState(false);
     const [currentStreak, setCurrentStreak] = useState(0);
@@ -103,6 +108,15 @@ const App: React.FC = () => {
     const [isWakeLockSupported, setIsWakeLockSupported] = useState(true);
 
     const selectedWorkout = selectedWorkoutIndex !== null ? workouts[selectedWorkoutIndex] : null;
+
+    // Load local asset index to see which videos we actually have
+    useEffect(() => {
+        loadAssetIndex().then(index => {
+            if (index && index.videos) {
+                setAvailableVideos(index.videos);
+            }
+        });
+    }, []);
 
     useEffect(() => {
         const checkWakeLockSupport = () => {
@@ -129,9 +143,28 @@ const App: React.FC = () => {
         const createExerciseWithOverrides = (name: string): Exercise => {
             const custom = customExercisesMap.get(name.toLowerCase());
             if (custom) return custom;
+            
+            // 1. Check for Local Video File
+            const mediaSource = getImageForExercise(name, availableVideos);
+            const isLocalVideo = mediaSource.toLowerCase().endsWith('.mp4') || mediaSource.toLowerCase().endsWith('.webm');
+            
+            // 2. Check for YouTube ID (if no local video found or if specific override desired)
+            const youtubeId = !isLocalVideo ? getYoutubeIdForExercise(name) : undefined;
+            
+            // 3. Determine Image/Thumbnail
+            let image = mediaSource;
+            if (youtubeId) {
+                image = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+            } else if (isLocalVideo) {
+                // If local video but no thumbnail logic yet, keep empty or use default
+                image = ''; 
+            }
+
             return {
                 name,
-                image: getImageForExercise(name),
+                image: image, 
+                video: isLocalVideo ? mediaSource : undefined,
+                youtubeId: youtubeId,
                 description: [
                     'Maintain a straight back and engaged core.',
                     'Focus on controlled, deliberate movements.',
@@ -162,7 +195,7 @@ const App: React.FC = () => {
         }).filter(assertWorkout);
 
         setWorkouts(dataWithOverrides);
-    }, [customExercises]);
+    }, [customExercises, availableVideos]);
 
     useEffect(() => {
         if (!ProgressService.loadProfile() || workouts.length === 0) return;
@@ -192,14 +225,9 @@ const App: React.FC = () => {
             setSelectedWorkoutIndex(resumeWorkoutIndex);
             setView('workout');
         } else {
-            // Default selection behavior if no workout in progress
-            // If profile exists, select based on their difficulty if not already set
             const p = ProgressService.loadProfile();
             if (p) {
-                // Find the first not done workout
                 const firstNotDone = workouts.findIndex((w) => !progress[ProgressService.getWorkoutUID(w)]?.done);
-                
-                // Or find the first workout of their difficulty level
                 const firstOfLevel = workouts.findIndex(w => w.cycle === p.difficulty);
                 
                 if (firstNotDone >= 0) {
@@ -231,12 +259,10 @@ const App: React.FC = () => {
 
     const handleWorkoutFinish = useCallback(() => {
         if (selectedWorkout) {
-            // Mark Progress
             const uid = ProgressService.getWorkoutUID(selectedWorkout);
             const newProgress = ProgressService.markDone(uid);
             setProgress(newProgress);
 
-            // Update Gamification Stats
             const statsUpdate = ProgressService.updateProfileStats(selectedWorkout);
             if (statsUpdate) {
                 setProfile(statsUpdate.profile);
@@ -288,6 +314,7 @@ const App: React.FC = () => {
     
     const handleVideoSelected = async (videoDataUrl: string) => {
         try {
+            // Generate an initial thumbnail automatically
             const thumbnailUrl = await generateVideoThumbnail(videoDataUrl);
             setExerciseEditorData(prev => ({ ...prev, image: thumbnailUrl, video: videoDataUrl, youtubeId: undefined }));
         } catch (e) {
@@ -314,8 +341,9 @@ const App: React.FC = () => {
     const handleCreateProfile = (newProfile: Profile) => {
         ProgressService.saveProfile(newProfile);
         setProfile(newProfile);
+        setTempOnboardingName('');
+        setNewProfilePicture(null);
         
-        // Auto-select the first workout of their chosen difficulty
         const firstWorkoutOfLevel = workouts.findIndex(w => w.cycle === newProfile.difficulty);
         if (firstWorkoutOfLevel >= 0) {
             setSelectedWorkoutIndex(firstWorkoutOfLevel);
@@ -350,13 +378,14 @@ const App: React.FC = () => {
         setView('tutorial');
     };
 
+    // Called when the user confirms a frame in the ThumbnailSelector
     const handleThumbnailSelected = (dataUrl: string) => {
         setExerciseEditorData(prev => ({ ...prev, image: dataUrl }));
         setVideoForThumbnailSelection(null);
         setView('exerciseEditor');
     };
 
-    const handleBack = () => {
+    const handleBack = useCallback(() => {
         if (view === 'workout' && selectedWorkout) {
             const uid = ProgressService.getWorkoutUID(selectedWorkout);
             const newProgress = ProgressService.clearInProgress(uid);
@@ -364,24 +393,56 @@ const App: React.FC = () => {
             setView('home');
         } else if (view === 'repTracking') {
              setView('finished');
-        } else if (['profile', 'tutorial', 'chooseCycle', 'settings', 'camera', 'imageCropper', 'exerciseEditor', 'videoRecorder', 'thumbnailSelector'].includes(view)) {
+        } else if (['profile', 'tutorial', 'chooseCycle', 'settings', 'camera', 'imageCropper', 'exerciseEditor', 'videoRecorder', 'thumbnailSelector', 'videoMatcher'].includes(view)) {
              if (view === 'camera' || view === 'imageCropper' || view === 'videoRecorder') {
                 setView(returnToView);
              } else if (view === 'exerciseEditor') {
                 setView('tutorial');
              } else if (view === 'thumbnailSelector') {
                 setView('exerciseEditor');
+             } else if (view === 'videoMatcher') {
+                setView('settings');
              } else {
                 setView('home');
              }
         } else {
-            setView('home');
+             if (view !== 'home') {
+                 setView('home');
+             }
         }
-    };
+    }, [view, selectedWorkout, returnToView]);
 
     const handleSaveAndExitWorkout = () => {
         setView('home');
     };
+
+    // --- Android Hardware Back Button Handling ---
+    useEffect(() => {
+        const setupBackListener = async () => {
+            try {
+                await CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+                    if (view !== 'home') {
+                        handleBack(); 
+                    } else {
+                        CapacitorApp.exitApp();
+                    }
+                });
+            } catch (e) {
+                console.log("Capacitor back button listener skipped (web mode).");
+            }
+        };
+        
+        setupBackListener();
+
+        return () => {
+            try {
+                CapacitorApp.removeAllListeners();
+            } catch (e) {
+                // Ignore error in web mode
+            }
+        };
+    }, [view, handleBack]);
+
 
     const BottomNavBar = () => {
         const navItems = [
@@ -417,8 +478,13 @@ const App: React.FC = () => {
             case 'onboarding':
                 return (
                     <OnboardingWizard 
+                        initialName={tempOnboardingName}
                         onComplete={handleCreateProfile}
-                        onTakePhoto={() => { setReturnToView('onboarding'); setView('camera'); }}
+                        onTakePhoto={(currentName) => { 
+                            setTempOnboardingName(currentName);
+                            setReturnToView('onboarding'); 
+                            setView('camera'); 
+                        }}
                         onFromGallery={() => { setReturnToView('onboarding'); fileInputRef.current?.click(); }}
                         tempPicture={newProfilePicture}
                     />
@@ -458,6 +524,7 @@ const App: React.FC = () => {
                         onCancel={handleBack}
                     />
                 }
+                // Fallback if state is missing
                 setView('exerciseEditor');
                 return null;
             case 'exerciseEditor':
@@ -475,6 +542,7 @@ const App: React.FC = () => {
                         setReturnToView('exerciseEditor');
                         setView('videoRecorder');
                     }}
+                    // Called when user clicks "Change Thumbnail" on an uploaded video
                     onSelectThumbnail={() => {
                         if (exerciseEditorData.video) {
                             setVideoForThumbnailSelection(exerciseEditorData.video);
@@ -486,6 +554,8 @@ const App: React.FC = () => {
                         fileInputRef.current?.click();
                     }}
                 />;
+            case 'videoMatcher':
+                return <VideoMatcher onBack={handleBack} />;
             case 'workout':
                 if (selectedWorkout) {
                     return <WorkoutScreen 
@@ -565,6 +635,7 @@ const App: React.FC = () => {
                     onUpdateSettings={handleUpdateSettings}
                     onBack={handleBack}
                     isWakeLockSupported={isWakeLockSupported}
+                    onOpenVideoMatcher={() => setView('videoMatcher')}
                 />;
             case 'chooseCycle':
                 return (
@@ -591,7 +662,7 @@ const App: React.FC = () => {
                     </div>
                 );
             case 'home':
-            default:
+            default: {
                 const uid = selectedWorkout
                     ? ProgressService.getWorkoutUID(selectedWorkout)
                     : null;
@@ -599,8 +670,8 @@ const App: React.FC = () => {
 
                 return (
                     <div className="p-4 space-y-6 min-h-screen flex flex-col">
-                        <div className="flex justify-center items-center py-6">
-                            <h1 className="text-4xl font-black italic tracking-tighter">LEAN<span className="text-accent">X</span></h1>
+                        <div className="flex justify-center items-center py-4">
+                            <h1 className="text-2xl font-black italic tracking-tighter">LEAN<span className="text-accent">X</span></h1>
                         </div>
 
                         {selectedWorkout && (
@@ -613,14 +684,15 @@ const App: React.FC = () => {
                         
                         <div className="mt-auto pt-4">
                             <button 
-                                onClick={() => setView('tutorial')} 
-                                className="w-full bg-gray-900/80 backdrop-blur-md text-gray-400 font-bold py-4 rounded-2xl text-sm uppercase tracking-widest border border-dashed border-gray-700 hover:border-accent hover:text-accent transition-all"
+                                onClick={() => setView('chooseCycle')} 
+                                className="w-full bg-gray-900/80 backdrop-blur-md text-gray-400 font-bold py-2.5 rounded-xl text-xs uppercase tracking-widest border border-dashed border-gray-700 hover:border-accent hover:text-accent transition-all"
                             >
-                                View Exercise Library
+                                Choose Workout
                             </button>
                         </div>
                     </div>
                 );
+            }
         }
     };
 
@@ -628,7 +700,6 @@ const App: React.FC = () => {
 
     return (
         <main className={`min-h-screen bg-black text-white font-sans ${showNavBar ? 'pb-24' : ''} selection:bg-accent selection:text-black`}>
-            {/* Global Background Gradient */}
             <div className="fixed inset-0 bg-gradient-to-br from-gray-900 via-black to-gray-900 pointer-events-none z-[-1]"></div>
             
             <input

@@ -193,6 +193,7 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({ src, onComplete, onC
                     src={src}
                     alt="Crop preview"
                     className="pointer-events-none max-w-none"
+                    referrerPolicy="no-referrer"
                     style={{
                         transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
                         transition: isDragging ? 'none' : 'transform 0.1s ease-out'

@@ -1,13 +1,15 @@
 
+
 import React from 'react';
 import type { Settings } from '../types';
-import { BackArrowIcon, SettingsIcon } from './icons';
+import { BackArrowIcon, SettingsIcon, FilmIcon } from './icons';
 
 interface SettingsScreenProps {
   settings: Settings;
   onUpdateSettings: (settings: Settings) => void;
   onBack: () => void;
   isWakeLockSupported: boolean;
+  onOpenVideoMatcher: () => void;
 }
 
 const ToggleSwitch: React.FC<{
@@ -45,7 +47,7 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
     </div>
 );
 
-export const SettingsScreen: React.FC<SettingsScreenProps> = ({ settings, onUpdateSettings, onBack, isWakeLockSupported }) => {
+export const SettingsScreen: React.FC<SettingsScreenProps> = ({ settings, onUpdateSettings, onBack, isWakeLockSupported, onOpenVideoMatcher }) => {
   const handleSettingChange = (key: keyof Settings, value: boolean) => {
     const newSettings = { ...settings, [key]: value };
     onUpdateSettings(newSettings);
@@ -102,7 +104,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ settings, onUpda
                     description="Log your reps after each exercise."
                 />
                 {settings.trackReps && (
-                    <div className="pl-4 border-l-2 border-gray-800 bg-gray-900/30 -mx-4 px-8 py-1">
+                    <div className="pl-8 pr-4 border-l-2 border-gray-800 bg-gray-900/30 -mx-4 py-1">
                         <ToggleSwitch 
                             label="Auto-Pause Timer" 
                             labelId="pause-on-rep-count" 
@@ -124,7 +126,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ settings, onUpda
                     description="Dynamic background colors based on phase."
                 />
                  {settings.enableColor && (
-                     <div className="pl-4 border-l-2 border-gray-800 bg-gray-900/30 -mx-4 px-8 py-1">
+                     <div className="pl-8 pr-4 border-l-2 border-gray-800 bg-gray-900/30 -mx-4 py-1">
                          <ToggleSwitch 
                             label="Motion Effects" 
                             labelId="enable-glass-motion" 
@@ -146,8 +148,22 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ settings, onUpda
                 />
           </div>
           
+           <SectionHeader title="Developer Tools" />
+           <button 
+                onClick={onOpenVideoMatcher}
+                className="w-full bg-gray-900/50 hover:bg-gray-800 border border-white/5 rounded-xl p-4 flex items-center gap-3 transition-colors text-left"
+            >
+                <div className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center">
+                    <FilmIcon className="w-5 h-5 text-accent" />
+                </div>
+                <div>
+                    <div className="font-bold text-white">Video Matcher</div>
+                    <div className="text-xs text-gray-500">Easily map YouTube videos to exercises</div>
+                </div>
+           </button>
+
           <div className="mt-8 text-center text-xs text-gray-700 font-mono uppercase">
-              App Version 2.0.4
+              App Version 2.0.5
           </div>
       </main>
     </div>

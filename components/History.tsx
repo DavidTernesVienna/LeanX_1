@@ -84,7 +84,7 @@ export const History: React.FC<HistoryProps> = ({ workouts, progress, onSelectWo
   };
 
   const handleMarkCycleDone = (cycleName: string) => {
-    let p = ProgressService.loadProgress();
+    const p = ProgressService.loadProgress();
     workouts.forEach((w) => {
       if (w.cycle === cycleName) {
         const uid = ProgressService.getWorkoutUID(w);
@@ -96,7 +96,7 @@ export const History: React.FC<HistoryProps> = ({ workouts, progress, onSelectWo
   }
 
   const handleResetCycle = (cycleName: string) => {
-    let p = ProgressService.loadProgress();
+    const p = ProgressService.loadProgress();
     workouts.forEach((w) => {
       if (w.cycle === cycleName) {
         const uid = ProgressService.getWorkoutUID(w);
@@ -125,11 +125,11 @@ export const History: React.FC<HistoryProps> = ({ workouts, progress, onSelectWo
             <div className="flex justify-between items-end mb-2 relative z-10">
               <div>
                   <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">History</h3>
-                  <span className="text-2xl font-black text-white tracking-tight uppercase">{cycle.name}</span>
+                  <span className="text-xl font-black text-white tracking-tight uppercase">{cycle.name}</span>
               </div>
               <div className="flex items-center gap-2">
-                  {isComplete && <TrophyIcon className="w-6 h-6 text-yellow-400 animate-pulse" />}
-                  <span className={`text-2xl font-bold ${isComplete ? 'text-accent' : 'text-gray-500'}`}>{percentComplete}%</span>
+                  {isComplete && <TrophyIcon className="w-5 h-5 text-yellow-400 animate-pulse" />}
+                  <span className={`text-xl font-bold ${isComplete ? 'text-accent' : 'text-gray-500'}`}>{percentComplete}%</span>
               </div>
             </div>
 
@@ -187,8 +187,8 @@ export const History: React.FC<HistoryProps> = ({ workouts, progress, onSelectWo
                                           className="flex-grow flex items-center gap-3 cursor-pointer"
                                       >
                                           <div className="relative">
-                                            <img src={item.workout.exercises[0]?.image || `https://picsum.photos/seed/${item.index}/40/40`} alt={item.workout.day} className="w-12 h-12 rounded-lg object-cover bg-gray-800 flex-shrink-0 grayscale group-hover:grayscale-0 transition-all" />
-                                            {pItem.done && <div className="absolute inset-0 bg-green-500/30 rounded-lg flex items-center justify-center"><CheckIcon className="w-6 h-6 text-white drop-shadow-md" /></div>}
+                                            <img src={item.workout.exercises[0]?.image || `https://picsum.photos/seed/${item.index}/40/40`} alt={item.workout.day} className="w-10 h-10 rounded-lg object-cover bg-gray-800 flex-shrink-0 grayscale group-hover:grayscale-0 transition-all" referrerPolicy="no-referrer" />
+                                            {pItem.done && <div className="absolute inset-0 bg-green-500/30 rounded-lg flex items-center justify-center"><CheckIcon className="w-5 h-5 text-white drop-shadow-md" /></div>}
                                           </div>
                                           <div className="flex flex-col">
                                               <span className={`font-bold text-sm ${pItem.done ? 'text-gray-400 line-through decoration-accent' : 'text-off-white'}`}>{item.workout.day}</span>

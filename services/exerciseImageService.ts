@@ -1,3 +1,4 @@
+
 const exerciseImageMap = new Map<string, string>([
   // Crawling Warmup
   ['pointers', 'https://i.imgur.com/8l1p2aJ.gif'],
@@ -68,6 +69,31 @@ const exerciseImageMap = new Map<string, string>([
 
 const DEFAULT_IMAGE = 'https://i.imgur.com/6M3J4gG.gif';
 
-export const getImageForExercise = (name: string): string => {
+/**
+ * Normalizes an exercise name for filename matching (lowercase, underscores instead of spaces).
+ */
+const normalizeForFile = (name: string): string => {
+  return name.toLowerCase().trim().replace(/\s+/g, '_');
+};
+
+/**
+ * Returns the best available media for an exercise.
+ * Checks for:
+ * 1. Matching local video (provided via asset naming convention)
+ * 2. Predefined Imgur GIF
+ * 3. Default fallback GIF
+ */
+export const getImageForExercise = (name: string, availableVideos: string[] = []): string => {
+    const normalized = normalizeForFile(name);
+    
+    // Check if we have a matching local video in our index
+    // We expect the availableVideos to contain paths like "content/videos/diamond_pushups.mp4"
+    if (availableVideos && availableVideos.length > 0) {
+        const localVideo = availableVideos.find(v => v.toLowerCase().includes(normalized));
+        if (localVideo) {
+            return localVideo;
+        }
+    }
+
     return exerciseImageMap.get(name.toLowerCase().trim()) || DEFAULT_IMAGE;
 };

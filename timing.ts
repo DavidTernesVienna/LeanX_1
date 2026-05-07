@@ -33,7 +33,7 @@ export const parseTiming = (timing: string, overrideRounds?: number): { work: nu
     }
 
     // Try slash/dash format e.g., "40/20x3" or "40-20 x 3"
-    const slashMatch = t.match(/^(\d+)\s*[\/-]\s*(\d+)(?:\s*[xX]\s*(\d+))?/);
+    const slashMatch = t.match(/^(\d+)\s*[/-]\s*(\d+)(?:\s*[xX]\s*(\d+))?/);
     if (slashMatch) {
         work = parseInt(slashMatch[1], 10);
         rest = parseInt(slashMatch[2], 10);

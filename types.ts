@@ -33,7 +33,7 @@ export type Workout = Omit<RawWorkout, 'warmUp' | 'exercises' | 'coolDown' | 'ro
 };
 
 
-export type AppView = 'home' | 'workout' | 'finished' | 'repTracking' | 'profile' | 'tutorial' | 'chooseCycle' | 'settings' | 'onboarding' | 'camera' | 'imageCropper' | 'exerciseEditor' | 'videoRecorder' | 'thumbnailSelector';
+export type AppView = 'home' | 'workout' | 'finished' | 'repTracking' | 'profile' | 'tutorial' | 'chooseCycle' | 'settings' | 'onboarding' | 'camera' | 'imageCropper' | 'exerciseEditor' | 'videoRecorder' | 'thumbnailSelector' | 'videoMatcher';
 
 export interface ProfileStats {
   totalXp: number;

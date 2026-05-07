@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import type { Workout } from '../types';
-import { BackArrowIcon } from './icons';
+import { BackArrowIcon, CheckIcon } from './icons';
 
 interface RepTrackingScreenProps {
   workout: Workout;
@@ -9,86 +10,109 @@ interface RepTrackingScreenProps {
   initialReps?: number[];
 }
 
+// Embedded Numpad Component (Dumb Component)
+export const EmbeddedNumpad: React.FC<{
+  onInput: (digit: string) => void;
+  onBackspace: () => void;
+  onNext: () => void;
+  isLast?: boolean;
+}> = ({ onInput, onBackspace, onNext, isLast }) => {
+  const buttons = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+  return (
+    <div className="grid grid-cols-3 gap-3 p-4 bg-black pb-safe">
+      {buttons.map(num => (
+        <button
+          key={num}
+          onClick={() => onInput(num)}
+          className="h-14 bg-gray-900 rounded-xl text-2xl font-bold text-white active:bg-gray-800 transition-colors"
+        >
+          {num}
+        </button>
+      ))}
+      
+      <button
+        onClick={() => onInput('0')}
+        className="h-14 bg-gray-900 rounded-xl text-2xl font-bold text-white active:bg-gray-800 transition-colors"
+      >
+        0
+      </button>
+      
+      <button
+        onClick={onBackspace}
+        className="h-14 bg-gray-900 rounded-xl text-xl font-bold text-white flex items-center justify-center active:bg-gray-800 transition-colors"
+      >
+        ⌫
+      </button>
+
+      <button
+        onClick={onNext}
+        className={`h-14 rounded-xl text-lg font-black uppercase tracking-wider active:scale-95 transition-transform ${isLast ? 'bg-accent text-black' : 'bg-blue-600 text-white'}`}
+      >
+        {isLast ? 'Done' : 'Next'}
+      </button>
+    </div>
+  );
+};
+
 export const Numpad: React.FC<{
   exerciseName: string;
   initialValue: string;
   onDone: (value: string) => void;
   onClose: () => void;
 }> = ({ exerciseName, initialValue, onDone, onClose }) => {
-  const [value, setValue] = useState(initialValue);
+  const [value, setValue] = useState(initialValue === '0' || initialValue === '' ? '' : initialValue);
 
   const handleInput = (digit: string) => {
     if (value.length < 3) {
-      // Prevent leading zero if input is empty, unless it's the only digit
-      if (value === '0') {
-        setValue(digit);
-      } else {
-        setValue(value + digit);
-      }
+      setValue(prev => (prev === '0' ? digit : prev + digit));
     }
   };
 
   const handleBackspace = () => {
-    setValue(v => v.slice(0, -1));
+    setValue(prev => prev.slice(0, -1));
   };
 
-  const handleDone = () => {
-    onDone(value);
+  const handleConfirm = () => {
+    onDone(value || '0');
   };
-
-  const buttons = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-      <div className="bg-gray-dark p-6 rounded-xl w-80 space-y-6" onClick={(e) => e.stopPropagation()}>
-        <div className="text-center">
-          <p className="text-gray-text truncate" title={exerciseName}>{exerciseName}</p>
-          <div className="text-5xl font-bold h-16 flex items-center justify-center">{value || <span className="text-gray-light">0</span>}</div>
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex flex-col justify-end z-50 animate-fade-in" onClick={onClose}>
+      <div className="bg-gray-900 rounded-t-3xl border-t border-gray-800 overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-gray-900">
+          <div>
+             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Log Reps</h3>
+             <p className="text-white font-bold text-xl truncate max-w-[200px]">{exerciseName}</p>
+          </div>
+          <div className="h-16 w-24 bg-black rounded-xl border border-gray-700 flex items-center justify-center text-4xl font-bold text-accent font-mono tabular-nums shadow-inner">
+             {value || <span className="text-gray-700">0</span>}
+          </div>
         </div>
-
-        <div className="grid grid-cols-3 gap-2">
-          {buttons.map(num => (
-            <button
-              key={num}
-              onClick={() => handleInput(num)}
-              className="h-16 bg-gray-light rounded-full text-2xl font-semibold transition-transform active:scale-95"
-            >
-              {num}
-            </button>
-          ))}
-          <button
-            onClick={handleBackspace}
-            className="h-16 bg-gray-light rounded-full text-2xl font-semibold transition-transform active:scale-95 flex items-center justify-center"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9.75L14.25 12m0 0l2.25 2.25M14.25 12l2.25-2.25M14.25 12L12 14.25m-2.58 4.92l-6.375-6.375a1.125 1.125 0 010-1.59L9.42 4.83c.211-.211.498-.33.796-.33H19.5a2.25 2.25 0 012.25 2.25v10.5a2.25 2.25 0 01-2.25 2.25h-9.284c-.298 0-.585-.119-.796-.33z" />
-            </svg>
-          </button>
-          <button
-            onClick={() => handleInput('0')}
-            className="h-16 bg-gray-light rounded-full text-2xl font-semibold transition-transform active:scale-95"
-          >
-            0
-          </button>
-          <button
-            onClick={handleDone}
-            className="h-16 bg-accent text-off-white rounded-full text-lg font-bold transition-transform active:scale-95"
-          >
-            Done
-          </button>
+        
+        <div className="bg-black p-2">
+            <EmbeddedNumpad 
+                onInput={handleInput}
+                onBackspace={handleBackspace}
+                onNext={handleConfirm}
+                isLast={true}
+            />
         </div>
       </div>
     </div>
   );
 };
 
-
 export const RepTrackingScreen: React.FC<RepTrackingScreenProps> = ({ workout, onSaveReps, onBack, initialReps }) => {
   const exercisesToTrack = workout.exercises;
   const [reps, setReps] = useState<string[]>([]);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingIndex, setEditingIndex] = useState<number>(0);
   
-  // Effect to initialize reps from props
+  // Ref to scroll selected item into view
+  const listRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // Initialize reps
   useEffect(() => {
      const initial = Array(exercisesToTrack.length).fill('');
     if (initialReps) {
@@ -101,65 +125,102 @@ export const RepTrackingScreen: React.FC<RepTrackingScreenProps> = ({ workout, o
     setReps(initial);
   }, [initialReps, exercisesToTrack.length]);
 
+  // Scroll active item into view
+  useEffect(() => {
+      if (itemRefs.current[editingIndex]) {
+          itemRefs.current[editingIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+  }, [editingIndex]);
+
   const handleSave = () => {
     const repsAsNumbers = reps.map(r => parseInt(r, 10)).map(n => isNaN(n) ? 0 : n);
     onSaveReps(repsAsNumbers);
   };
 
-  const handleNumpadDone = (value: string) => {
-    if (editingIndex !== null) {
+  const handleInput = (digit: string) => {
+    const currentVal = reps[editingIndex] || '';
+    if (currentVal.length < 3) {
+      const newVal = (currentVal === '0') ? digit : currentVal + digit;
       const newReps = [...reps];
-      newReps[editingIndex] = value;
+      newReps[editingIndex] = newVal;
       setReps(newReps);
     }
-    setEditingIndex(null);
   };
 
-  const currentExerciseName = editingIndex !== null ? exercisesToTrack[editingIndex].name : '';
-  const currentInitialValue = editingIndex !== null ? reps[editingIndex] : '';
+  const handleBackspace = () => {
+    const currentVal = reps[editingIndex] || '';
+    const newVal = currentVal.slice(0, -1);
+    const newReps = [...reps];
+    newReps[editingIndex] = newVal;
+    setReps(newReps);
+  };
+
+  const handleNext = () => {
+      if (editingIndex < exercisesToTrack.length - 1) {
+          setEditingIndex(editingIndex + 1);
+      } else {
+          handleSave();
+      }
+  };
 
   return (
-    <div className="min-h-screen flex flex-col p-4">
-      <header className="flex items-center">
-        <button onClick={onBack} className="p-2 -ml-2">
-          <BackArrowIcon className="w-6 h-6" />
+    <div className="fixed inset-0 flex flex-col bg-black">
+      <header className="flex items-center p-4 border-b border-gray-800 bg-gray-900/50 backdrop-blur-md z-10">
+        <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-gray-800">
+          <BackArrowIcon className="w-6 h-6 text-gray-400" />
         </button>
-        <h1 className="font-semibold text-xl mx-auto">Log Your Reps</h1>
-        <div className="w-6 h-6"></div>
+        <h1 className="font-bold text-lg mx-auto uppercase tracking-wider">Log Reps</h1>
+        <button onClick={handleSave} className="text-accent font-bold text-sm uppercase tracking-wider px-2 hover:text-white transition-colors">
+            Finish
+        </button>
       </header>
 
-      <div className="flex-grow my-8 space-y-3 overflow-y-auto">
-        {exercisesToTrack.map((exercise, index) => (
-          <button
-            key={index}
-            onClick={() => setEditingIndex(index)}
-            className="w-full flex items-center justify-between bg-gray-dark p-4 rounded-lg text-left transition-colors hover:bg-gray-light"
-          >
-            <span className="font-medium">{exercise.name}</span>
-            <span className="bg-gray-light text-off-white text-center p-2 rounded-md w-24">
-              {reps[index] || <span className="text-gray-text">Reps</span>}
-            </span>
-          </button>
-        ))}
+      {/* Main Content Area - Exercise List */}
+      <div className="flex-grow overflow-y-auto p-4 space-y-3" ref={listRef}>
+        {exercisesToTrack.map((exercise, index) => {
+            const isActive = index === editingIndex;
+            const isDone = !!reps[index];
+            
+            return (
+              <button
+                key={index}
+                ref={(el) => { itemRefs.current[index] = el; }}
+                onClick={() => setEditingIndex(index)}
+                className={`w-full flex items-center gap-4 p-4 rounded-2xl text-left transition-all duration-300 border ${isActive ? 'bg-gray-800 border-accent shadow-lg scale-[1.02]' : 'bg-gray-900 border-gray-800 opacity-70 hover:opacity-100'}`}
+              >
+                 <div className="w-10 h-10 rounded-lg bg-gray-800 overflow-hidden flex-shrink-0 border border-white/10">
+                    <img src={exercise.image} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                 </div>
+                 
+                 <div className="flex-grow min-w-0">
+                    <h3 className={`font-bold text-sm truncate ${isActive ? 'text-white' : 'text-gray-400'}`}>{exercise.name}</h3>
+                    {isDone && !isActive && <p className="text-[10px] text-accent mt-1">Logged: {reps[index]}</p>}
+                 </div>
+
+                 <div className={`h-10 min-w-[50px] px-2 rounded-lg flex items-center justify-center font-mono text-lg font-bold ${isActive ? 'bg-accent text-black' : 'bg-black/40 text-gray-500'}`}>
+                    {reps[index] || (isActive ? <span className="animate-pulse">|</span> : '-')}
+                 </div>
+              </button>
+            );
+        })}
+        
+        {/* Spacer for scrolling */}
+        <div className="h-40"></div>
       </div>
 
-      <div className="mt-auto pt-8">
-        <button
-          onClick={handleSave}
-          className="w-full bg-accent text-off-white font-bold py-4 rounded-full text-lg transition-transform active:scale-95"
-        >
-          Save & Continue
-        </button>
+      {/* Bottom Numpad Container */}
+      <div className="border-t border-gray-800 bg-black z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+          <div className="flex justify-between px-6 py-2 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+              <span>Current Exercise</span>
+              <span>{editingIndex + 1} / {exercisesToTrack.length}</span>
+          </div>
+          <EmbeddedNumpad 
+            onInput={handleInput}
+            onBackspace={handleBackspace}
+            onNext={handleNext}
+            isLast={editingIndex === exercisesToTrack.length - 1}
+          />
       </div>
-      
-      {editingIndex !== null && (
-        <Numpad 
-          exerciseName={currentExerciseName}
-          initialValue={currentInitialValue}
-          onDone={handleNumpadDone}
-          onClose={() => setEditingIndex(null)}
-        />
-      )}
     </div>
   );
 };

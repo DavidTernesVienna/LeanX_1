@@ -129,7 +129,7 @@ export const updateProfileStats = (workout: Workout): { profile: Profile, xpGain
     const now = new Date();
     const today = now.toISOString().split('T')[0];
     
-    let stats = profile.stats || {
+    const stats = profile.stats || {
         totalXp: 0,
         level: 1,
         currentStreak: 0,
@@ -350,18 +350,18 @@ const jsLikeToJson = (s: string) => {
 
 export const parseCyclesText = (txt: string): Workout[] | null => {
     if (!txt) return null;
-    let s = stripComments(txt);
+    const s = stripComments(txt);
     try {
         const j = JSON.parse(s);
         if (Array.isArray(j)) return j;
-    } catch (_) {}
+    } catch (e) { /* ignore */ }
 
     let arr = extractArrayText(s);
     arr = jsLikeToJson(arr);
 
     try {
         return JSON.parse(arr);
-    } catch (_) {}
+    } catch (e) { /* ignore */ }
 
     try {
         return JSON.parse(arr.replace(/'([^']*)'/g, '"$1"'));
