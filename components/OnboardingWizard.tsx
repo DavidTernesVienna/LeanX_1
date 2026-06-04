@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import type { Profile, DifficultyLevel } from '../types';
 import { UserIcon, CameraIcon, CheckIcon, StarIcon } from './icons';
 

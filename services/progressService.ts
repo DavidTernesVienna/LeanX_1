@@ -1,6 +1,6 @@
 
 
-import type { Workout, Progress, TimerSnapshot, Profile, Settings, Exercise, ProfileStats } from '../types';
+import type { Workout, Progress, TimerSnapshot, Profile, Settings, Exercise } from '../types';
 
 const SCHEMA_VERSION = 1;
 
@@ -354,14 +354,14 @@ export const parseCyclesText = (txt: string): Workout[] | null => {
     try {
         const j = JSON.parse(s);
         if (Array.isArray(j)) return j;
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
 
     let arr = extractArrayText(s);
     arr = jsLikeToJson(arr);
 
     try {
         return JSON.parse(arr);
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
 
     try {
         return JSON.parse(arr.replace(/'([^']*)'/g, '"$1"'));

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import type { Workout, Exercise, WorkoutPhase, Settings } from '../types';
 import { BackArrowIcon, InfoIcon, PauseIcon, PlayIcon, NextIcon, PrevIcon, SettingsIcon, RestIcon } from './icons';
 import { Numpad } from './RepTrackingScreen';
@@ -92,9 +92,8 @@ export const WorkoutScreen: React.FC<{
     onBack: () => void;
     onFinish: () => void;
     onShowExerciseInfo: (exercise: Exercise) => void;
-    onSaveAndExit: () => void;
     isWakeLockSupported: boolean;
-}> = ({ workout, settings, onUpdateSettings, sessionReps, setSessionReps, onBack, onFinish, onShowExerciseInfo, onSaveAndExit, isWakeLockSupported }) => {
+}> = ({ workout, settings, onUpdateSettings, sessionReps, setSessionReps, onBack, onFinish, onShowExerciseInfo, isWakeLockSupported }) => {
     
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const wasRunningOnSettingsOpen = useRef(false);
@@ -115,8 +114,8 @@ export const WorkoutScreen: React.FC<{
     });
 
     const {
-        phase, seconds, running, round, exerciseIndex, warmupStage,
-        headerTitle, displayExercise, nextUpExercise, canGoPrev,
+        phase, seconds, running, round, exerciseIndex,
+        displayExercise, nextUpExercise, canGoPrev,
         togglePlayPause, changeExercise, resetWorkoutState, setRunning
     } = timer;
 

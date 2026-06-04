@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
-import { BUILT_IN_DATA, WORKOUT_NAMES, CRAWLING_WARMUP_NAMES, SIDELYING_WARMUP_NAMES } from './constants';
+import { WORKOUT_NAMES, CRAWLING_WARMUP_NAMES, SIDELYING_WARMUP_NAMES } from './constants';
 import * as ProgressService from './services/progressService';
 import { getImageForExercise } from './services/exerciseImageService';
 import { getYoutubeIdForExercise } from './services/exerciseVideoService';
@@ -420,14 +420,14 @@ const App: React.FC = () => {
     useEffect(() => {
         const setupBackListener = async () => {
             try {
-                await CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+                await CapacitorApp.addListener('backButton', () => {
                     if (view !== 'home') {
                         handleBack(); 
                     } else {
                         CapacitorApp.exitApp();
                     }
                 });
-            } catch (e) {
+            } catch {
                 console.log("Capacitor back button listener skipped (web mode).");
             }
         };
@@ -437,7 +437,7 @@ const App: React.FC = () => {
         return () => {
             try {
                 CapacitorApp.removeAllListeners();
-            } catch (e) {
+            } catch {
                 // Ignore error in web mode
             }
         };

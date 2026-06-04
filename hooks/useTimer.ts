@@ -34,7 +34,7 @@ export const useTimer = ({ workout, settings, sessionReps, setSessionReps, onFin
         if (!audioCtxRef.current) {
             try {
                 audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-            } catch (e) {
+            } catch {
                 console.error("Web Audio API is not supported in this browser");
                 return;
             }
@@ -137,13 +137,8 @@ export const useTimer = ({ workout, settings, sessionReps, setSessionReps, onFin
 
         const interval = setInterval(() => {
             const now = Date.now();
-            // Calculate actual elapsed time since last tick to handle minor drifts or throttles
-            const deltaMs = now - lastTickRef.current;
             
-            // Only update if at least 1 second has technically passed (or we force it)
-            // But for simple React state, let's stick to the 1s interval logic but correct using the ref
-            
-            // Reset reference for next tick
+            // Set reference for next tick
             lastTickRef.current = now;
 
             setSeconds(s => {

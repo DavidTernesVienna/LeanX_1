@@ -79,7 +79,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ onVideoTaken, onCa
             const options = { mimeType: 'video/webm; codecs=vp9' };
             try {
                  mediaRecorderRef.current = new MediaRecorder(streamRef.current, options);
-            } catch(e) {
+            } catch {
                  mediaRecorderRef.current = new MediaRecorder(streamRef.current);
             }
            

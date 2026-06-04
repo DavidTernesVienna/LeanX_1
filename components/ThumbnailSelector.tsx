@@ -40,13 +40,13 @@ export const ThumbnailSelector: React.FC<ThumbnailSelectorProps> = ({ src, onCom
         const onSeeked = () => {
             setDurationFromVideo();
             video.removeEventListener('seeked', onSeeked);
-            try { video.currentTime = 0; } catch (e) { /* ignore */ }
+            try { video.currentTime = 0; } catch { /* ignore */ }
         };
 
         video.addEventListener('seeked', onSeeked);
         try {
             video.currentTime = 1e101; 
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
     };
 
     useEffect(() => {
@@ -84,7 +84,7 @@ export const ThumbnailSelector: React.FC<ThumbnailSelectorProps> = ({ src, onCom
                 video.pause(); 
                 video.currentTime = time;
                 setCurrentTime(time);
-            } catch (e) { /* ignore */ }
+            } catch { /* ignore */ }
         }
     };
     

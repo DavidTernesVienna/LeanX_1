@@ -150,7 +150,8 @@ export const BUILT_IN_DATA: Workout[] = WORKOUT_NAMES.map((w) => {
     const id = `${w.cycle}|${w.week}|${w.day}|${w.timing}`.toLowerCase();
 
     // Omit the optional 'rounds' from the raw workout object before spreading
-    const { rounds: _rawRounds, ...rawWorkoutRest } = w;
+    const rawWorkoutRest = { ...w };
+    delete rawWorkoutRest.rounds;
 
     return {
         ...rawWorkoutRest,

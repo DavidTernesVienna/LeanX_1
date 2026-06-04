@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import type { Workout } from '../types';
-import { BackArrowIcon, CheckIcon } from './icons';
+import { BackArrowIcon } from './icons';
 
 interface RepTrackingScreenProps {
   workout: Workout;
